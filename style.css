@@ -1076,6 +1076,73 @@ footer {
   animation: fadeIn 0.6s ease-out;
 }
 
+/* SVG Text Visibility - Critical for Dark Theme */
+svg text {
+  fill: var(--text-primary) !important;
+  font-family: var(--font-sans);
+}
+
+svg .axis text,
+svg .x-axis text,
+svg .y-axis text {
+  fill: var(--text-secondary) !important;
+}
+
+svg .axis line,
+svg .axis path,
+svg .domain {
+  stroke: var(--border-color);
+}
+
+svg .year-label {
+  fill: var(--accent-color) !important;
+}
+
+/* Legend styling */
+.stream-legend,
+.bubble-legend,
+.trajectory-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--bg-accent);
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.legend-item span {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+/* Map container */
+#world-map {
+  min-height: 400px;
+  background: var(--bg-accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#world-map p {
+  color: var(--text-secondary);
+}
+
 /* Responsive Grid */
 @media (max-width: 1200px) {
   .viz-grid {

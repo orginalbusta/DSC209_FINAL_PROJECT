@@ -258,14 +258,16 @@ function updateTimelineViz(year) {
   });
   
   // Axes
-  g.append('g')
+  const xAxisG = g.append('g')
     .attr('transform', `translate(0, ${height})`)
-    .call(d3.axisBottom(xScale).tickFormat(d3.format('d')))
-    .style('color', '#999');
+    .call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+  xAxisG.selectAll('text').style('fill', '#9aa0a6');
+  xAxisG.selectAll('line, path').style('stroke', '#2d3548');
   
-  g.append('g')
-    .call(d3.axisLeft(yScale).ticks(5))
-    .style('color', '#999');
+  const yAxisG = g.append('g')
+    .call(d3.axisLeft(yScale).ticks(5));
+  yAxisG.selectAll('text').style('fill', '#9aa0a6');
+  yAxisG.selectAll('line, path').style('stroke', '#2d3548');
     
   // Y-axis label
   g.append('text')
@@ -273,7 +275,7 @@ function updateTimelineViz(year) {
     .attr('y', -50)
     .attr('x', -height / 2)
     .attr('text-anchor', 'middle')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .style('font-size', '14px')
     .text('GDP (Trillions USD)');
 }
@@ -356,10 +358,11 @@ function createStreamGraph() {
     });
   
   // Axes
-  g.append('g')
+  const streamAxis = g.append('g')
     .attr('transform', `translate(0, ${height})`)
-    .call(d3.axisBottom(xScale).tickFormat(d3.format('d')))
-    .style('color', '#999');
+    .call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+  streamAxis.selectAll('text').style('fill', '#9aa0a6');
+  streamAxis.selectAll('line, path').style('stroke', '#2d3548');
   
   // Legend
   const legend = d3.select('#stream-legend');
@@ -558,19 +561,21 @@ function createBubbleChart() {
   // Axes
   const xAxis = g.append('g')
     .attr('transform', `translate(0, ${height})`)
-    .call(d3.axisBottom(xScale).ticks(5, '$,.0f'))
-    .style('color', '#999');
+    .call(d3.axisBottom(xScale).ticks(5, '$,.0f'));
+  xAxis.selectAll('text').style('fill', '#9aa0a6');
+  xAxis.selectAll('line, path').style('stroke', '#2d3548');
   
   const yAxis = g.append('g')
-    .call(d3.axisLeft(yScale))
-    .style('color', '#999');
+    .call(d3.axisLeft(yScale));
+  yAxis.selectAll('text').style('fill', '#9aa0a6');
+  yAxis.selectAll('line, path').style('stroke', '#2d3548');
   
   // Axis labels
   g.append('text')
     .attr('x', width / 2)
     .attr('y', height + 45)
     .attr('text-anchor', 'middle')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .style('font-size', '14px')
     .text('GDP per Capita ($)');
   
@@ -579,7 +584,7 @@ function createBubbleChart() {
     .attr('y', -60)
     .attr('x', -height / 2)
     .attr('text-anchor', 'middle')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .style('font-size', '14px')
     .text('Life Expectancy (years)');
   
@@ -759,7 +764,7 @@ function createRadarChart() {
       .attr('y', Math.sin(angle) * (radius + 20))
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .style('fill', '#999')
+      .style('fill', '#e8eaed')
       .style('font-size', '14px')
       .style('font-weight', '600')
       .text(indicator);
@@ -769,7 +774,7 @@ function createRadarChart() {
   g.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .style('font-size', '16px')
     .text('Radar chart data processing...');
 }
@@ -851,21 +856,23 @@ function createTrajectoryChart() {
   });
   
   // Axes
-  g.append('g')
+  const trajXAxis = g.append('g')
     .attr('transform', `translate(0, ${height})`)
-    .call(d3.axisBottom(xScale).ticks(5, '$,.0f'))
-    .style('color', '#999');
+    .call(d3.axisBottom(xScale).ticks(5, '$,.0f'));
+  trajXAxis.selectAll('text').style('fill', '#9aa0a6');
+  trajXAxis.selectAll('line, path').style('stroke', '#2d3548');
   
-  g.append('g')
-    .call(d3.axisLeft(yScale))
-    .style('color', '#999');
+  const trajYAxis = g.append('g')
+    .call(d3.axisLeft(yScale));
+  trajYAxis.selectAll('text').style('fill', '#9aa0a6');
+  trajYAxis.selectAll('line, path').style('stroke', '#2d3548');
   
   // Axis labels
   g.append('text')
     .attr('x', width / 2)
     .attr('y', height + 45)
     .attr('text-anchor', 'middle')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .text('GDP per Capita ($)');
   
   g.append('text')
@@ -873,7 +880,7 @@ function createTrajectoryChart() {
     .attr('y', -60)
     .attr('x', -height / 2)
     .attr('text-anchor', 'middle')
-    .style('fill', '#999')
+    .style('fill', '#9aa0a6')
     .text('Life Expectancy (years)');
   
   // Legend
