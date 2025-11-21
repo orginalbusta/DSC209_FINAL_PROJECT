@@ -708,111 +708,136 @@ function createWorldMap() {
     // Add navigation controls
     map.addControl(new mapboxgl.NavigationControl());
     
-    // Enhanced country data with historical timeline
+    // Enhanced country data with historical timeline and multiple indicators
     const countryData = {
       'United States': { 
         coords: [-95.7129, 37.0902], 
-        color: '#4e79a7',
         data: { 
-          1960: { gdp: 3007, life: 69.8 },
-          1980: { gdp: 12598, life: 73.7 },
-          2000: { gdp: 36450, life: 76.8 },
-          2020: { gdp: 63543, life: 77.3 }
+          1960: { gdp: 3007, life_expectancy: 69.8, internet: 0, mobile: 0 },
+          1980: { gdp: 12598, life_expectancy: 73.7, internet: 0, mobile: 0 },
+          2000: { gdp: 36450, life_expectancy: 76.8, internet: 43.1, mobile: 38.8 },
+          2020: { gdp: 63543, life_expectancy: 77.3, internet: 87.3, mobile: 121.6 }
         }
       },
       'China': { 
         coords: [104.1954, 35.8617], 
-        color: '#e15759',
         data: {
-          1960: { gdp: 89, life: 43.7 },
-          1980: { gdp: 194, life: 66.5 },
-          2000: { gdp: 959, life: 71.4 },
-          2020: { gdp: 10408, life: 77.5 }
+          1960: { gdp: 89, life_expectancy: 43.7, internet: 0, mobile: 0 },
+          1980: { gdp: 194, life_expectancy: 66.5, internet: 0, mobile: 0 },
+          2000: { gdp: 959, life_expectancy: 71.4, internet: 1.8, mobile: 6.6 },
+          2020: { gdp: 10408, life_expectancy: 77.5, internet: 70.5, mobile: 124.9 }
         }
       },
       'India': { 
         coords: [78.9629, 20.5937], 
-        color: '#76b7b2',
         data: {
-          1960: { gdp: 82, life: 41.3 },
-          1980: { gdp: 266, life: 54.1 },
-          2000: { gdp: 443, life: 62.5 },
-          2020: { gdp: 1965, life: 69.7 }
+          1960: { gdp: 82, life_expectancy: 41.3, internet: 0, mobile: 0 },
+          1980: { gdp: 266, life_expectancy: 54.1, internet: 0, mobile: 0 },
+          2000: { gdp: 443, life_expectancy: 62.5, internet: 0.5, mobile: 0.4 },
+          2020: { gdp: 1965, life_expectancy: 69.7, internet: 43.0, mobile: 84.8 }
         }
       },
       'Germany': { 
         coords: [10.4515, 51.1657], 
-        color: '#f28e2c',
         data: {
-          1960: { gdp: 1200, life: 69.3 },
-          1980: { gdp: 11730, life: 72.6 },
-          2000: { gdp: 23740, life: 78.3 },
-          2020: { gdp: 46445, life: 80.9 }
+          1960: { gdp: 1200, life_expectancy: 69.3, internet: 0, mobile: 0 },
+          1980: { gdp: 11730, life_expectancy: 72.6, internet: 0, mobile: 0 },
+          2000: { gdp: 23740, life_expectancy: 78.3, internet: 30.2, mobile: 58.6 },
+          2020: { gdp: 46445, life_expectancy: 80.9, internet: 90.7, mobile: 127.8 }
         }
       },
       'Brazil': { 
         coords: [-47.8825, -14.2350], 
-        color: '#59a14f',
         data: {
-          1960: { gdp: 205, life: 54.6 },
-          1980: { gdp: 1760, life: 62.5 },
-          2000: { gdp: 3750, life: 70.4 },
-          2020: { gdp: 6796, life: 75.9 }
+          1960: { gdp: 205, life_expectancy: 54.6, internet: 0, mobile: 0 },
+          1980: { gdp: 1760, life_expectancy: 62.5, internet: 0, mobile: 0 },
+          2000: { gdp: 3750, life_expectancy: 70.4, internet: 2.9, mobile: 13.3 },
+          2020: { gdp: 6796, life_expectancy: 75.9, internet: 74.9, mobile: 107.2 }
         }
       },
       'Nigeria': { 
         coords: [8.6753, 9.0820], 
-        color: '#edc949',
         data: {
-          1960: { gdp: 93, life: 37.3 },
-          1980: { gdp: 852, life: 45.8 },
-          2000: { gdp: 374, life: 46.3 },
-          2020: { gdp: 2097, life: 54.7 }
+          1960: { gdp: 93, life_expectancy: 37.3, internet: 0, mobile: 0 },
+          1980: { gdp: 852, life_expectancy: 45.8, internet: 0, mobile: 0 },
+          2000: { gdp: 374, life_expectancy: 46.3, internet: 0.1, mobile: 0.2 },
+          2020: { gdp: 2097, life_expectancy: 54.7, internet: 42.0, mobile: 88.3 }
         }
       }
     };
     
-    // Store markers for updates
+    // Store markers and current state
     const markers = {};
+    let currentIndicator = 'life_expectancy';
+    let currentYear = 2020;
+    
+    // Color scale for indicators
+    function getColorScale(indicator) {
+      switch(indicator) {
+        case 'gdp':
+          return d3.scaleSequential(d3.interpolateBlues).domain([0, 70000]);
+        case 'life_expectancy':
+          return d3.scaleSequential(d3.interpolateViridis).domain([35, 85]);
+        case 'internet':
+          return d3.scaleSequential(d3.interpolateOranges).domain([0, 100]);
+        case 'mobile':
+          return d3.scaleSequential(d3.interpolatePurples).domain([0, 130]);
+        default:
+          return d3.scaleSequential(d3.interpolateViridis).domain([0, 100]);
+      }
+    }
+    
+    // Get indicator label and formatting
+    function getIndicatorLabel(indicator) {
+      const labels = {
+        'gdp': { name: 'GDP Per Capita', format: (v) => `$${v.toLocaleString()}`, emoji: '💰' },
+        'life_expectancy': { name: 'Life Expectancy', format: (v) => `${v.toFixed(1)} years`, emoji: '❤️' },
+        'internet': { name: 'Internet Users', format: (v) => `${v.toFixed(1)}%`, emoji: '🌐' },
+        'mobile': { name: 'Mobile Subscriptions', format: (v) => `${v.toFixed(1)} per 100`, emoji: '📱' }
+      };
+      return labels[indicator] || labels['life_expectancy'];
+    }
     
     map.on('load', () => {
       // Add markers for each country with enhanced styling
       Object.entries(countryData).forEach(([country, info]) => {
-        const data2020 = info.data[2020];
+        const data = info.data[currentYear];
+        const colorScale = getColorScale(currentIndicator);
+        const markerColor = colorScale(data[currentIndicator]);
         
         // Create marker element with pulse effect
         const el = document.createElement('div');
         el.className = 'country-marker';
-        el.style.backgroundColor = info.color;
+        el.style.backgroundColor = markerColor;
         el.style.width = '24px';
         el.style.height = '24px';
         el.style.borderRadius = '50%';
         el.style.border = '3px solid rgba(255, 255, 255, 0.8)';
-        el.style.boxShadow = `0 0 10px ${info.color}`;
+        el.style.boxShadow = `0 0 10px ${markerColor}`;
         el.style.cursor = 'pointer';
         el.style.transition = 'all 0.3s ease';
         
         // Hover effect
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'scale(1.3)';
-          el.style.boxShadow = `0 0 20px ${info.color}`;
+          el.style.boxShadow = `0 0 20px ${markerColor}`;
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'scale(1)';
-          el.style.boxShadow = `0 0 10px ${info.color}`;
+          el.style.boxShadow = `0 0 10px ${markerColor}`;
         });
         
-        // Create popup with better styling
+        // Create popup
+        const indicatorInfo = getIndicatorLabel(currentIndicator);
         const popup = new mapboxgl.Popup({ 
           offset: 25,
           closeButton: false
         })
         .setHTML(`
           <div style="color: #212529; font-family: system-ui, -apple-system, sans-serif; padding: 10px;">
-            <strong style="font-size: 15px; color: ${info.color};">${country}</strong><br/>
+            <strong style="font-size: 15px; color: ${markerColor};">${country}</strong><br/>
             <div style="margin-top: 6px; font-size: 12px; line-height: 1.6;">
-              <span>💰 GDP: <strong>$${data2020.gdp.toLocaleString()}</strong></span><br/>
-              <span>❤️ Life Exp: <strong>${data2020.life.toFixed(1)} years</strong></span>
+              <span>${indicatorInfo.emoji} ${indicatorInfo.name}: <strong>${indicatorInfo.format(data[currentIndicator])}</strong></span>
             </div>
           </div>
         `);
@@ -827,12 +852,17 @@ function createWorldMap() {
       });
       
       // Add legend
-      createMapLegend();
+      updateMapLegend();
     });
     
-    // Create color legend
-    function createMapLegend() {
+    // Create/update color legend based on current indicator
+    function updateMapLegend() {
+      // Remove existing legend
+      const existingLegend = mapContainer.querySelector('.map-legend-custom');
+      if (existingLegend) existingLegend.remove();
+      
       const legendDiv = document.createElement('div');
+      legendDiv.className = 'map-legend-custom';
       legendDiv.style.cssText = `
         position: absolute;
         bottom: 40px;
@@ -848,41 +878,70 @@ function createWorldMap() {
         backdrop-filter: blur(10px);
       `;
       
-      legendDiv.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 10px; font-size: 13px;">📍 Countries</div>
-        ${Object.entries(countryData).map(([country, info]) => `
-          <div style="display: flex; align-items: center; margin-bottom: 7px;">
-            <div style="width: 14px; height: 14px; border-radius: 50%; background: ${info.color}; margin-right: 10px; border: 2px solid rgba(255,255,255,0.3);"></div>
-            <span style="font-size: 11px;">${country}</span>
+      const indicatorInfo = getIndicatorLabel(currentIndicator);
+      const colorScale = getColorScale(currentIndicator);
+      
+      // Create gradient for legend
+      const gradientSteps = 5;
+      const domain = colorScale.domain();
+      const step = (domain[1] - domain[0]) / (gradientSteps - 1);
+      
+      const gradientHTML = Array.from({ length: gradientSteps }, (_, i) => {
+        const value = domain[0] + (step * i);
+        const color = colorScale(value);
+        return `
+          <div style="display: flex; align-items: center; margin-bottom: 5px;">
+            <div style="width: 20px; height: 14px; background: ${color}; margin-right: 8px; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;"></div>
+            <span style="font-size: 11px;">${indicatorInfo.format(value)}</span>
           </div>
-        `).join('')}
+        `;
+      }).join('');
+      
+      legendDiv.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 10px; font-size: 13px;">${indicatorInfo.emoji} ${indicatorInfo.name}</div>
+        ${gradientHTML}
       `;
       
       mapContainer.appendChild(legendDiv);
     }
     
-    // Function to update map data for a specific year
-    function updateMapForYear(year) {
+    // Function to update map markers based on year and indicator
+    function updateMapVisualization(year, indicator) {
       const availableYears = [1960, 1980, 2000, 2020];
       const closestYear = availableYears.reduce((prev, curr) => 
         Math.abs(curr - year) < Math.abs(prev - year) ? curr : prev
       );
       
+      currentYear = closestYear;
+      currentIndicator = indicator;
+      
+      const colorScale = getColorScale(indicator);
+      const indicatorInfo = getIndicatorLabel(indicator);
+      
       Object.entries(markers).forEach(([country, markerObj]) => {
         const data = markerObj.info.data[closestYear];
         if (data) {
+          const markerColor = colorScale(data[indicator]);
+          
+          // Update marker color
+          markerObj.element.style.backgroundColor = markerColor;
+          markerObj.element.style.boxShadow = `0 0 10px ${markerColor}`;
+          
+          // Update popup content
           markerObj.popup.setHTML(`
             <div style="color: #212529; font-family: system-ui, -apple-system, sans-serif; padding: 10px;">
-              <strong style="font-size: 15px; color: ${markerObj.info.color};">${country}</strong>
+              <strong style="font-size: 15px; color: ${markerColor};">${country}</strong>
               <div style="font-size: 11px; color: #666; margin-top: 2px;">Year: ${closestYear}</div>
               <div style="margin-top: 6px; font-size: 12px; line-height: 1.6;">
-                <span>💰 GDP: <strong>$${data.gdp.toLocaleString()}</strong></span><br/>
-                <span>❤️ Life Exp: <strong>${data.life.toFixed(1)} years</strong></span>
+                <span>${indicatorInfo.emoji} ${indicatorInfo.name}: <strong>${indicatorInfo.format(data[indicator])}</strong></span>
               </div>
             </div>
           `);
         }
       });
+      
+      // Update legend
+      updateMapLegend();
     }
     
   } catch (error) {
@@ -890,24 +949,33 @@ function createWorldMap() {
     mapContainer.innerHTML = '<p style="text-align:center; padding: 100px 20px; color: #9aa0a6;">Map initialization failed. Check console for details.</p>';
   }
   
-  // Map controls - Year slider and play button
+  // Map controls - Indicator dropdown, year slider, and play button
+  const indicatorSelect = document.getElementById('map-indicator');
   const yearSlider = document.getElementById('map-year-slider');
   const yearDisplay = document.getElementById('map-year-display');
   const playBtn = document.getElementById('play-pause-btn');
   
+  // Indicator change handler
+  if (indicatorSelect) {
+    indicatorSelect.addEventListener('change', (e) => {
+      const year = yearSlider ? parseInt(yearSlider.value) : 2020;
+      updateMapVisualization(year, e.target.value);
+    });
+  }
+  
+  // Year slider handler
   if (yearSlider) {
     yearSlider.addEventListener('input', (e) => {
       const year = parseInt(e.target.value);
       if (yearDisplay) {
         yearDisplay.textContent = year;
       }
-      // Update map data when slider moves
-      if (typeof updateMapForYear !== 'undefined') {
-        updateMapForYear(year);
-      }
+      const indicator = indicatorSelect ? indicatorSelect.value : 'life_expectancy';
+      updateMapVisualization(year, indicator);
     });
   }
   
+  // Play button handler
   if (playBtn) {
     let playInterval = null;
     playBtn.addEventListener('click', () => {
@@ -917,20 +985,16 @@ function createWorldMap() {
         playBtn.textContent = '▶ Play';
       } else {
         playBtn.textContent = '⏸ Pause';
-        let year = parseInt(yearSlider.value);
+        let year = yearSlider ? parseInt(yearSlider.value) : 1960;
         playInterval = setInterval(() => {
           year += 5;
           if (year > 2020) {
             year = 1960;
           }
-          yearSlider.value = year;
-          if (yearDisplay) {
-            yearDisplay.textContent = year;
-          }
-          // Update map data during animation
-          if (typeof updateMapForYear !== 'undefined') {
-            updateMapForYear(year);
-          }
+          if (yearSlider) yearSlider.value = year;
+          if (yearDisplay) yearDisplay.textContent = year;
+          const indicator = indicatorSelect ? indicatorSelect.value : 'life_expectancy';
+          updateMapVisualization(year, indicator);
         }, 1500);
       }
     });
