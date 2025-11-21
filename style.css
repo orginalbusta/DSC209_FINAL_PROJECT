@@ -2,17 +2,17 @@
    CSS Variables & Root Styles
    =================================== */
 :root {
-  /* Color Palette - Light Mode */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-accent: #e9ecef;
-  --text-primary: #212529;
-  --text-secondary: #6c757d;
+  /* Color Palette - Dark Mode (Default) */
+  --bg-primary: #0a0e27;
+  --bg-secondary: #151a35;
+  --bg-accent: #1e2541;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
   --accent-color: #667eea;
   --accent-secondary: #764ba2;
-  --accent-hover: #5568d3;
-  --border-color: #dee2e6;
-  --shadow: rgba(0, 0, 0, 0.1);
+  --accent-hover: #7c8cff;
+  --border-color: #2d3548;
+  --shadow: rgba(0, 0, 0, 0.5);
   
   /* Gradient Colors */
   --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -21,9 +21,9 @@
   --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
   
   /* Visualization Colors */
-  --viz-bg: #ffffff;
-  --viz-border: #dee2e6;
-  --chart-primary: #4e79a7;
+  --viz-bg: #151a35;
+  --viz-border: #2d3548;
+  --chart-primary: #6c8aec;
   --chart-secondary: #f28e2c;
   --chart-tertiary: #e15759;
   
@@ -50,19 +50,19 @@
   --transition-smooth: 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark Mode */
-body.dark-mode {
-  --bg-primary: #1a1d23;
-  --bg-secondary: #22262e;
-  --bg-accent: #2a2f3a;
-  --text-primary: #e9ecef;
-  --text-secondary: #adb5bd;
-  --accent-color: #4dabf7;
-  --accent-hover: #339af0;
-  --border-color: #495057;
-  --shadow: rgba(0, 0, 0, 0.3);
-  --viz-bg: #22262e;
-  --viz-border: #495057;
+/* Light Mode (when toggled) */
+body.light-mode {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-accent: #e9ecef;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --accent-color: #667eea;
+  --accent-hover: #5568d3;
+  --border-color: #dee2e6;
+  --shadow: rgba(0, 0, 0, 0.1);
+  --viz-bg: #ffffff;
+  --viz-border: #dee2e6;
 }
 
 /* ===================================

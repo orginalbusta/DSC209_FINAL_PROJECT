@@ -98,23 +98,27 @@ function animateStats() {
 }
 
 // ===================================
-// Dark Mode Toggle
+// Theme Toggle (Default: Dark)
 // ===================================
 function initDarkMode() {
   const themeToggle = document.getElementById('theme-toggle');
   const themeIcon = themeToggle.querySelector('.icon');
 
+  // Default to dark mode, allow switching to light
   const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark-mode');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    themeIcon.textContent = '🌙';
+  } else {
+    // Dark mode by default
     themeIcon.textContent = '☀️';
   }
 
   themeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    themeIcon.textContent = isDark ? '☀️' : '🌙';
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+    themeIcon.textContent = isLight ? '🌙' : '☀️';
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
   });
 }
 

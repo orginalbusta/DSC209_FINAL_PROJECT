@@ -147,6 +147,34 @@ Full dataset: [World Bank Data by Indicators](https://github.com/light-and-salt/
 
 This project is for educational purposes as part of DSC 209R coursework.
 
+## 🚧 TODO / Work In Progress
+
+This is an active prototype with several features still under development:
+
+### Pending Implementations
+- [ ] **World Choropleth Map** - Mapbox integration with animated year slider and color encoding by indicators
+- [ ] **Bubble Chart Animation** - Multi-dimensional scatter plot with play/pause functionality through decades
+- [ ] **Radar/Spider Chart** - Multi-indicator country comparison with interactive country selection
+- [ ] **Development Trajectories** - Connected scatter plot showing unique paths countries took from 1960 to 2020
+- [ ] **Map Indicator Controls** - Functional dropdown for switching between GDP, life expectancy, internet penetration, mobile subscriptions
+- [ ] **Bubble Chart Year Slider** - Interactive year control with smooth transitions
+- [ ] **Country Selection UI** - Dynamic country chips for radar chart comparison
+- [ ] **Full Dataset Integration** - Expand healthData to include all 250+ countries across all years
+
+### Known Issues
+- Some visualization controls (map indicator selector, bubble year slider) are present but not yet functional
+- Geographic visualization requires Mapbox token configuration
+- Additional data points needed for complete 1960-2020 coverage across all metrics
+
+### Future Enhancements
+- Add data source citations for each visualization
+- Implement tooltip interactivity across all charts
+- Add animation controls (speed, direction) for time-based visualizations
+- Mobile responsive optimizations
+- Performance improvements for large datasets
+
+**Note**: The racing bar chart, stream graph, and scrollytelling timeline are fully functional. Focus areas are completing the remaining interactive visualizations.
+
 ## 🙏 Acknowledgments
 
 - D3.js community for powerful visualization library
