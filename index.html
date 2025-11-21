@@ -309,56 +309,50 @@
   <section id="writeup" class="writeup-section">
     <h2>Project Progress & Challenges</h2>
     
-    <div class="writeup-cards">
-      <article class="writeup-card">
-        <div class="card-icon">📚</div>
-        <div class="card-content">
-          <h3>What have you done so far?</h3>
-          <p>
-            We have successfully implemented the foundational structure of our interactive visualization 
-            project, incorporating techniques from all eight DSC 106 labs. Our prototype features a 
-            responsive HTML structure with semantic markup and proper navigation (Lab 1), styled with 
-            modern CSS using Flexbox and Grid layouts, custom properties for theming, and a cohesive 
-            color scheme (Lab 2). We've integrated JavaScript interactivity including DOM manipulation, 
-            event listeners, and a dark mode toggle that persists user preferences in local storage (Lab 3).
-          </p>
-          <p>
-            The data management system uses ES6 modules and async/await patterns to load sample World Bank 
-            development data (Lab 4). We've created three core visualizations: a D3.js pie chart showing 
-            GDP distribution by region with interactive selection and color-coded legends (Lab 5), a scatter 
-            plot displaying the relationship between life expectancy and GDP per capita with axes, tooltips, 
-            and a year slider for temporal exploration (Lab 6), and a Mapbox-powered interactive global map 
-            that visualizes different development indicators with color encoding and country-level detail (Lab 7). 
-            Finally, we've implemented a scrollytelling narrative using Scrollama.js that guides users through 
-            decades of development with smooth transitions and animated visualizations (Lab 8).
-          </p>
-        </div>
-      </article>
+    <div class="writeup-content">
+      <div class="writeup-block">
+        <h3>What have you done so far?</h3>
+        <p>
+          We have successfully implemented the foundational structure of our interactive visualization 
+          project, incorporating techniques from all eight DSC 106 labs. Our prototype features a 
+          responsive HTML structure with semantic markup and proper navigation (Lab 1), styled with 
+          modern CSS using Flexbox and Grid layouts, custom properties for theming, and a cohesive 
+          color scheme (Lab 2). We've integrated JavaScript interactivity including DOM manipulation, 
+          event listeners, and a dark mode toggle that persists user preferences in local storage (Lab 3).
+        </p>
+        <p>
+          The data management system uses ES6 modules and async/await patterns to load sample World Bank 
+          development data (Lab 4). We've created three core visualizations: a D3.js pie chart showing 
+          GDP distribution by region with interactive selection and color-coded legends (Lab 5), a scatter 
+          plot displaying the relationship between life expectancy and GDP per capita with axes, tooltips, 
+          and a year slider for temporal exploration (Lab 6), and a Mapbox-powered interactive global map 
+          that visualizes different development indicators with color encoding and country-level detail (Lab 7). 
+          Finally, we've implemented a scrollytelling narrative using Scrollama.js that guides users through 
+          decades of development with smooth transitions and animated visualizations (Lab 8).
+        </p>
+      </div>
       
-      <article class="writeup-card">
-        <div class="card-icon">🎯</div>
-        <div class="card-content">
-          <h3>What will be the most challenging part of your project to design and why?</h3>
-          <p>
-            The most challenging aspect will be creating meaningful narrative connections between disparate 
-            indicators while managing the complexity of 60 years of data across 250+ countries and 20 indicators. 
-            Unlike simple time-series visualizations, our project requires coordinating multiple linked views 
-            where user interactions in one visualization (such as selecting a country or time period) must 
-            intelligently update other visualizations while maintaining visual continuity and performance.
-          </p>
-          <p>
-            Another significant challenge lies in designing an information hierarchy that serves both exploratory 
-            and explanatory purposes. We need to balance data-driven exploration (allowing users to discover 
-            patterns themselves) with guided narrative storytelling (highlighting key insights about historical 
-            events and their ripple effects). This requires careful attention to visual encoding choices, 
-            interaction design, and progressive disclosure—revealing complexity gradually without overwhelming 
-            users. We'll need to implement sophisticated filtering, aggregation, and animation techniques while 
-            ensuring the visualizations remain accessible, performant, and tell coherent stories about human 
-            development that go beyond just displaying numbers. The integration of geographical, temporal, and 
-            multivariate dimensions adds layers of complexity that demand thoughtful design decisions at every step.
-          </p>
-        </div>
-      </article>
+      <div class="writeup-block">
+        <h3>What will be the most challenging part of your project to design and why?</h3>
+        <p>
+          The most challenging aspect will be creating meaningful narrative connections between disparate 
+          indicators while managing the complexity of 60 years of data across 250+ countries and 20 indicators. 
+          Unlike simple time-series visualizations, our project requires coordinating multiple linked views 
+          where user interactions in one visualization (such as selecting a country or time period) must 
+          intelligently update other visualizations while maintaining visual continuity and performance.
+        </p>
+        <p>
+          Another significant challenge lies in designing an information hierarchy that serves both exploratory 
+          and explanatory purposes. We need to balance data-driven exploration (allowing users to discover 
+          patterns themselves) with guided narrative storytelling (highlighting key insights about historical 
+          events and their ripple effects). This requires careful attention to visual encoding choices, 
+          interaction design, and progressive disclosure—revealing complexity gradually without overwhelming 
+          users. We'll need to implement sophisticated filtering, aggregation, and animation techniques while 
+          ensuring the visualizations remain accessible, performant, and tell coherent stories about human 
+          development that go beyond just displaying numbers. The integration of geographical, temporal, and 
+          multivariate dimensions adds layers of complexity that demand thoughtful design decisions at every step.
+        </p>
+      </div>
     </div>
     
     <div class="team-members">
