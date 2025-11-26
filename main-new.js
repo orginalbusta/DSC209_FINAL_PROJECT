@@ -280,6 +280,74 @@ function updateTimelineViz(year) {
     .x(d => xScale(d.year))
     .y(d => yScaleHealth(d.life))
     .curve(d3.curveMonotoneX);
+
+  // Legend for all lines, drawn once well above the plot area
+  const legendG = svg.append('g')
+    .attr('transform', `translate(${margin.left}, -100)`);
+
+  let legendOffsetY = 0;
+
+  // Region lines
+  regions.forEach(region => {
+    const color = regionalGDPData[years[0]].find(d => d.region === region).color;
+
+    legendG.append('line')
+      .attr('x1', 0)
+      .attr('y1', legendOffsetY)
+      .attr('x2', 18)
+      .attr('y2', legendOffsetY)
+      .attr('stroke', color)
+      .attr('stroke-width', 3);
+
+    legendG.append('text')
+      .attr('x', 24)
+      .attr('y', legendOffsetY)
+      .attr('dy', '0.35em')
+      .style('fill', '#e8eaed')
+      .style('font-size', '11px')
+      .text(region);
+
+    legendOffsetY += 14;
+  });
+
+  // Life expectancy lines
+  legendOffsetY += 6;
+
+  legendG.append('line')
+    .attr('x1', 0)
+    .attr('y1', legendOffsetY)
+    .attr('x2', 18)
+    .attr('y2', legendOffsetY)
+    .attr('stroke', '#ff6b6b')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '6,4');
+
+  legendG.append('text')
+    .attr('x', 24)
+    .attr('y', legendOffsetY)
+    .attr('dy', '0.35em')
+    .style('fill', '#ff6b6b')
+    .style('font-size', '11px')
+    .text('Life Expectancy – West');
+
+  legendOffsetY += 14;
+
+  legendG.append('line')
+    .attr('x1', 0)
+    .attr('y1', legendOffsetY)
+    .attr('x2', 18)
+    .attr('y2', legendOffsetY)
+    .attr('stroke', '#ffd166')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '4,3');
+
+  legendG.append('text')
+    .attr('x', 24)
+    .attr('y', legendOffsetY)
+    .attr('dy', '0.35em')
+    .style('fill', '#ffd166')
+    .style('font-size', '11px')
+    .text('Life Expectancy – Rest');
   
   // Draw regional GDP per capita lines (labels handled via legend)
   lineData.forEach(d => {
@@ -347,77 +415,14 @@ function updateTimelineViz(year) {
 
   g.append('text')
     .attr('transform', 'rotate(90)')
-    .attr('y', -width - 50)
+    .attr('y', -width - 60)
     .attr('x', height / 2)
     .attr('text-anchor', 'middle')
     .style('fill', '#ff6b6b')
     .style('font-size', '14px')
     .text('Life Expectancy (years)');
 
-  // Legend for all lines (inside plot, upper-left)
-  const legend = g.append('g')
-    .attr('transform', 'translate(10, 0)');
-
-  let legendOffset = 0;
-
-  // Region lines
-  regions.forEach(region => {
-    const color = regionalGDPData[years[0]].find(d => d.region === region).color;
-
-    legend.append('line')
-      .attr('x1', 0)
-      .attr('y1', legendOffset)
-      .attr('x2', 18)
-      .attr('y2', legendOffset)
-      .attr('stroke', color)
-      .attr('stroke-width', 3);
-
-    legend.append('text')
-      .attr('x', 24)
-      .attr('y', legendOffset)
-      .attr('dy', '0.35em')
-      .style('fill', '#9aa0a6')
-      .style('font-size', '11px')
-      .text(region);
-
-    legendOffset += 18;
-  });
-
-  legend.append('line')
-    .attr('x1', 0)
-    .attr('y1', legendOffset)
-    .attr('x2', 18)
-    .attr('y2', legendOffset)
-    .attr('stroke', '#ff6b6b')
-    .attr('stroke-width', 3)
-    .attr('stroke-dasharray', '6,4');
-
-  legend.append('text')
-    .attr('x', 24)
-    .attr('y', legendOffset)
-    .attr('dy', '0.35em')
-    .style('fill', '#ff6b6b')
-    .style('font-size', '11px')
-    .text('Life Expectancy – West');
-
-  legendOffset += 18;
-
-  legend.append('line')
-    .attr('x1', 0)
-    .attr('y1', legendOffset)
-    .attr('x2', 18)
-    .attr('y2', legendOffset)
-    .attr('stroke', '#ffd166')
-    .attr('stroke-width', 3)
-    .attr('stroke-dasharray', '4,3');
-
-  legend.append('text')
-    .attr('x', 24)
-    .attr('y', legendOffset)
-    .attr('dy', '0.35em')
-    .style('fill', '#ffd166')
-    .style('font-size', '11px')
-    .text('Life Expectancy – Rest');
+  // Legend is handled directly in the SVG via line colors and axis labels
 }
 
 // ===================================
