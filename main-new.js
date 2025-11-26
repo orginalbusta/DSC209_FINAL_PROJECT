@@ -281,12 +281,8 @@ function updateTimelineViz(year) {
     .y(d => yScaleHealth(d.life))
     .curve(d3.curveMonotoneX);
   
-  // Draw regional GDP per capita lines + offset labels with leader lines
-  const usedLabelYs = [];
-  const minLabelY = 10;
-  const maxLabelY = height - 10;
-
-  lineData.forEach((d, i) => {
+  // Draw regional GDP per capita lines (labels handled via legend)
+  lineData.forEach(d => {
     if (!d.values.length) return;
 
     g.append('path')
@@ -296,55 +292,6 @@ function updateTimelineViz(year) {
       .attr('stroke-width', 3)
       .attr('opacity', 0.8)
       .attr('d', wealthLine);
-
-    // Label with slight vertical offset and a leader line to reduce crowding
-    const lastPoint = d.values[d.values.length - 1];
-    const xEnd = xScale(lastPoint.year);
-    const yEnd = yScaleWealth(lastPoint.gdpPerCapita);
-
-    let offsetY = (i - (regions.length - 1) / 2) * 14;
-    const labelX = xEnd + 35;
-    let labelY = yEnd + offsetY;
-
-    // Keep labels within the plot area (avoid overlapping axes titles)
-    labelY = Math.max(minLabelY, Math.min(maxLabelY, labelY));
-
-    // Simple collision-avoidance: nudge label if too close to an existing one
-    const minGap = 12;
-    let adjusted = true;
-    while (adjusted) {
-      adjusted = false;
-      for (const y of usedLabelYs) {
-        if (Math.abs(labelY - y) < minGap) {
-          labelY += minGap;
-          if (labelY > maxLabelY) labelY = y - minGap;
-          adjusted = true;
-          break;
-        }
-      }
-    }
-    usedLabelYs.push(labelY);
-
-    // Leader line from end of series to label
-    g.append('line')
-      .attr('x1', xEnd)
-      .attr('y1', yEnd)
-      .attr('x2', labelX - 6)
-      .attr('y2', labelY)
-      .attr('stroke', '#ffffff')
-      .attr('stroke-width', 1.5)
-      .attr('stroke-linecap', 'round')
-      .attr('opacity', 0.9);
-
-    // Label text
-    g.append('text')
-      .attr('x', labelX)
-      .attr('y', labelY)
-      .attr('dy', '0.35em')
-      .attr('fill', d.color)
-      .style('font-size', '11px')
-      .style('font-weight', '600')
-      .text(d.region);
   });
 
   // Draw life expectancy lines: Western vs Rest
@@ -407,11 +354,34 @@ function updateTimelineViz(year) {
     .style('font-size', '14px')
     .text('Life Expectancy (years)');
 
-  // Legend for life lines (inside plot, upper-left)
+  // Legend for all lines (inside plot, upper-left)
   const legend = g.append('g')
-    .attr('transform', 'translate(10, 10)');
+    .attr('transform', 'translate(10, 0)');
 
   let legendOffset = 0;
+
+  // Region lines
+  regions.forEach(region => {
+    const color = regionalGDPData[years[0]].find(d => d.region === region).color;
+
+    legend.append('line')
+      .attr('x1', 0)
+      .attr('y1', legendOffset)
+      .attr('x2', 18)
+      .attr('y2', legendOffset)
+      .attr('stroke', color)
+      .attr('stroke-width', 3);
+
+    legend.append('text')
+      .attr('x', 24)
+      .attr('y', legendOffset)
+      .attr('dy', '0.35em')
+      .style('fill', '#9aa0a6')
+      .style('font-size', '11px')
+      .text(region);
+
+    legendOffset += 18;
+  });
 
   legend.append('line')
     .attr('x1', 0)
@@ -448,6 +418,156 @@ function updateTimelineViz(year) {
     .style('fill', '#ffd166')
     .style('font-size', '11px')
     .text('Life Expectancy – Rest');
+}
+
+// ===================================
+// Global Gains Summary: West vs Rest
+// ===================================
+function createGlobalGainsChart() {
+  if (typeof healthData === 'undefined') return;
+
+  const svg = d3.select('#global-gains-chart');
+  if (svg.empty()) return;
+
+  svg.selectAll('*').remove();
+
+  const margin = { top: 60, right: 40, bottom: 60, left: 70 };
+  const width = 700 - margin.left - margin.right;
+  const height = 450 - margin.top - margin.bottom;
+
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
+  if (!years.length) return;
+
+  const startYear = years[0];
+  const endYear = years[years.length - 1];
+
+  const westernRegions = new Set(['North America', 'Europe']);
+
+  function aggregateForYear(year) {
+    const dataY = healthData[year] || [];
+    const west = dataY.filter(d => westernRegions.has(d.region));
+    const rest = dataY.filter(d => !westernRegions.has(d.region));
+
+    function weightedAverage(arr, key) {
+      const totalPop = d3.sum(arr, d => d.population);
+      if (!totalPop) return null;
+      return d3.sum(arr, d => d[key] * d.population) / totalPop;
+    }
+
+    return {
+      west: {
+        gdpPerCapita: weightedAverage(west, 'gdpPerCapita'),
+        life: weightedAverage(west, 'lifeExpectancy')
+      },
+      rest: {
+        gdpPerCapita: weightedAverage(rest, 'gdpPerCapita'),
+        life: weightedAverage(rest, 'lifeExpectancy')
+      }
+    };
+  }
+
+  const startAgg = aggregateForYear(startYear);
+  const endAgg = aggregateForYear(endYear);
+
+  if (!startAgg || !endAgg) return;
+
+  const data = [
+    {
+      group: 'West',
+      gdpGain: (endAgg.west.gdpPerCapita ?? 0) - (startAgg.west.gdpPerCapita ?? 0),
+      lifeGain: (endAgg.west.life ?? 0) - (startAgg.west.life ?? 0)
+    },
+    {
+      group: 'Rest',
+      gdpGain: (endAgg.rest.gdpPerCapita ?? 0) - (startAgg.rest.gdpPerCapita ?? 0),
+      lifeGain: (endAgg.rest.life ?? 0) - (startAgg.rest.life ?? 0)
+    }
+  ];
+
+  const panelWidth = width / 2 - 30;
+
+  // GDP per capita gain panel
+  const xGdp = d3.scaleBand()
+    .domain(data.map(d => d.group))
+    .range([0, panelWidth])
+    .padding(0.3);
+
+  const maxGdpGain = d3.max(data, d => d.gdpGain) || 1;
+  const yGdp = d3.scaleLinear()
+    .domain([0, maxGdpGain * 1.1])
+    .range([height, 0]);
+
+  const gGdp = g.append('g')
+    .attr('transform', 'translate(0,0)');
+
+  gGdp.append('g')
+    .attr('transform', `translate(0, ${height})`)
+    .call(d3.axisBottom(xGdp));
+
+  gGdp.append('g')
+    .call(d3.axisLeft(yGdp).ticks(5).tickFormat(d3.format('$,.0f')));
+
+  gGdp.selectAll('.bar-gdp')
+    .data(data)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar-gdp')
+    .attr('x', d => xGdp(d.group))
+    .attr('y', d => yGdp(d.gdpGain))
+    .attr('width', xGdp.bandwidth())
+    .attr('height', d => height - yGdp(d.gdpGain))
+    .attr('fill', '#667eea');
+
+  gGdp.append('text')
+    .attr('x', panelWidth / 2)
+    .attr('y', -20)
+    .attr('text-anchor', 'middle')
+    .style('fill', '#e8eaed')
+    .style('font-size', '13px')
+    .text(`GDP per Capita Gain (${startYear}–${endYear})`);
+
+  // Life expectancy gain panel
+  const xLife = d3.scaleBand()
+    .domain(data.map(d => d.group))
+    .range([panelWidth + 60, panelWidth * 2 + 60])
+    .padding(0.3);
+
+  const maxLifeGain = d3.max(data, d => d.lifeGain) || 1;
+  const yLife = d3.scaleLinear()
+    .domain([0, maxLifeGain * 1.1])
+    .range([height, 0]);
+
+  const gLife = g.append('g');
+
+  gLife.append('g')
+    .attr('transform', `translate(0, ${height})`)
+    .call(d3.axisBottom(xLife));
+
+  gLife.append('g')
+    .attr('transform', `translate(${panelWidth + 60}, 0)`)
+    .call(d3.axisLeft(yLife).ticks(5));
+
+  gLife.selectAll('.bar-life')
+    .data(data)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar-life')
+    .attr('x', d => xLife(d.group))
+    .attr('y', d => yLife(d.lifeGain))
+    .attr('width', xLife.bandwidth())
+    .attr('height', d => height - yLife(d.lifeGain))
+    .attr('fill', '#f6ad55');
+
+  gLife.append('text')
+    .attr('x', panelWidth + 60 + panelWidth / 2)
+    .attr('y', -20)
+    .attr('text-anchor', 'middle')
+    .style('fill', '#e8eaed')
+    .style('font-size', '13px')
+    .text(`Life Expectancy Gain (${startYear}–${endYear})`);
 }
 
 // ===================================
@@ -1721,6 +1841,7 @@ function init() {
       createRadarChart();
       createTrajectoryChart();
       createIndiaChinaTrajectory();
+      createGlobalGainsChart();
       
       console.log('✅ All visualizations loaded with full World Bank data!');
     }, 50);
