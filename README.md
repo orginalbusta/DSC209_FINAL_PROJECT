@@ -4,19 +4,22 @@ An Interactive Exploration of Human Development (1960-2020)
 
 ## Project Overview
 
-**Echoes of History** is a stunning, interactive data visualization that chronicles 60 years of global development through World Bank indicators. This prototype features cutting-edge animations, modern design aesthetics, and advanced visualization techniques to tell the story of human progress across 250+ countries from 1960 to 2020.
+**Echoes of History** is an interactive data story that chronicles 60 years of global development through World Bank indicators. The core question we explore is: **did the world become more equal in health or in wealth?**  
+Using a coordinated set of visualizations, we show how poorer countries often caught up in **life expectancy** much faster than in **GDP per capita**, with special attention to contrasts between the “West” and the rest of the world, and to the development paths of India and China.
 
 ## ✨ Features
 
 ### Advanced Visualizations
-1. **Animated Particle Background** - Dynamic particle network with connected nodes creating an immersive atmosphere
-2. **Stream Graph** - Flowing area chart showing regional GDP evolution over 7 decades with smooth animations
-3. **Racing Bar Chart** - Play/pause animated bar chart racing through time, showing top 10 countries
-4. **Interactive Scrollytelling Timeline** - Narrative journey through 7 decades (1960-2020) with animated line charts
-5. **Choropleth World Map** - Geographic visualization with color encoding (ready for Mapbox integration)
-6. **Bubble Chart** - Multi-dimensional scatter plot with animated transitions
-7. **Radar Chart** - Multi-indicator comparison across countries
-8. **Trajectory Visualization** - Connected scatter plot showing development paths
+1. **Animated Particle Background** – Dynamic particle network with connected nodes creating an immersive atmosphere.
+2. **Scrollytelling Timeline (Journey Through Time)** – Scroll-driven line chart that now shows **regional GDP per capita** plus **two population‑weighted life expectancy lines** (West vs Rest), highlighting when health and wealth move together or diverge.
+3. **Stream Graph** – Flowing stacked area chart showing how regional GDP shares evolve over 7 decades.
+4. **Racing Bar Chart** – Play/pause animated bar chart of the **top 10 countries** with a metric switcher (Total GDP, Population, Life Expectancy) and a year slider.
+5. **Choropleth World Map** – Mapbox‑powered country‑level map with an **indicator dropdown (GDP per capita vs Life Expectancy)**, an animated year slider, and stable, interpretable color scales and legends.
+6. **Bubble Chart – Wealth, Health & Population** – Animated scatter plot of GDP per capita vs life expectancy with bubble size for population and a time slider/animation to show convergence in health vs persistent gaps in wealth.
+7. **Radar Chart** – Time‑slider‑driven radar chart comparing multiple indicators (GDP per capita, life expectancy, population) for five countries (US, Germany, Brazil, Bangladesh, Thailand).
+8. **Trajectory Visualization** – Connected scatter plot of GDP per capita vs life expectancy over time for a mix of European and Global South countries, showing different development paths.
+9. **India & China Focus** – Dedicated trajectory view just for India and China, illustrating how large, early gains in life expectancy precede or accompany later surges in income.
+10. **Global Gains Summary (West vs Rest)** – Paired bar chart comparing aggregate gains in **GDP per capita** and **life expectancy** from the 1960s to today for Western countries vs the rest of the world.
 
 ### Visual Design
 - **Glitch Effect Hero** - Eye-catching animated title with digital glitch aesthetics
@@ -37,10 +40,10 @@ An Interactive Exploration of Human Development (1960-2020)
 ## Project Structure
 
 ```
-dsc209_final_project/
+DSC209_FINAL_PROJECT/
 ├── index.html           # Main HTML with particle canvas and hero sections
 ├── style.css            # Modern CSS with gradients and animations
-├── main.js              # Particle animation, counters, visualizations
+├── main-new.js          # Particle animation, counters, visualizations, and all D3 charts
 ├── data-loader.js       # Complete 1960-2020 time series data
 ├── gdp-viz.js           # GDP visualization module
 ├── health-viz.js        # Health vs wealth visualization
@@ -51,14 +54,15 @@ dsc209_final_project/
 ## 🚀 Quick Start
 
 ### View Live Demo
-Visit: `https://rvasappa-ucsd.github.io/dsc209_final_project/`
+Live demo:  
+`https://orginalbusta.github.io/DSC209_FINAL_PROJECT/`
 
 ### Local Development
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/rvasappa-ucsd/dsc209_final_project.git
-   cd dsc209_final_project
+   git clone https://github.com/orginalbusta/DSC209_FINAL_PROJECT.git
+   cd DSC209_FINAL_PROJECT
    ```
 
 2. **Serve locally**
@@ -103,10 +107,10 @@ Visit: `https://rvasappa-ucsd.github.io/dsc209_final_project/`
 - Year label with prominent display
 
 ### Scrollytelling Timeline
-- 7 decades of historical context (1960-2020)
-- Animated multi-line chart showing regional GDP
-- Scroll-triggered transitions
-- Detailed statistics for each decade
+- 7 decades of historical context (1960–2020).
+- Animated multi-line chart showing **regional GDP per capita**.
+- Overlaid life expectancy lines for **West vs Rest** using population‑weighted averages.
+- Scroll-triggered transitions tied to narrative text.
 
 ### Modern CSS Design
 - CSS custom properties for consistent theming
@@ -147,33 +151,10 @@ Full dataset: [World Bank Data by Indicators](https://github.com/light-and-salt/
 
 This project is for educational purposes as part of DSC 209R coursework.
 
-## 🚧 TODO / Work In Progress
+## 🚧 Notes & Future Enhancements
 
-This is an active prototype with several features still under development:
-
-### Pending Implementations
-- [ ] **World Choropleth Map** - Mapbox integration with animated year slider and color encoding by indicators
-- [ ] **Bubble Chart Animation** - Multi-dimensional scatter plot with play/pause functionality through decades
-- [ ] **Radar/Spider Chart** - Multi-indicator country comparison with interactive country selection
-- [ ] **Development Trajectories** - Connected scatter plot showing unique paths countries took from 1960 to 2020
-- [ ] **Map Indicator Controls** - Functional dropdown for switching between GDP, life expectancy, internet penetration, mobile subscriptions
-- [ ] **Bubble Chart Year Slider** - Interactive year control with smooth transitions
-- [ ] **Country Selection UI** - Dynamic country chips for radar chart comparison
-- [ ] **Full Dataset Integration** - Expand healthData to include all 250+ countries across all years
-
-### Known Issues
-- Some visualization controls (map indicator selector, bubble year slider) are present but not yet functional
-- Geographic visualization requires Mapbox token configuration
-- Additional data points needed for complete 1960-2020 coverage across all metrics
-
-### Future Enhancements
-- Add data source citations for each visualization
-- Implement tooltip interactivity across all charts
-- Add animation controls (speed, direction) for time-based visualizations
-- Mobile responsive optimizations
-- Performance improvements for large datasets
-
-**Note**: The racing bar chart, stream graph, and scrollytelling timeline are fully functional. Focus areas are completing the remaining interactive visualizations.
+- The map requires a valid Mapbox access token (see `main-new.js`) to render the full choropleth.
+- We may add richer tooltip interactivity, additional indicators, and more responsive layout tuning in future iterations.
 
 ## 🙏 Acknowledgments
 
