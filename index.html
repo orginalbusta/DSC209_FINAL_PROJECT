@@ -35,11 +35,11 @@
   <header id="overview" class="hero">
     <div class="hero-content">
       <h1 class="glitch" data-text="Echoes of History">Echoes of History</h1>
-      <p class="subtitle fade-in">An Interactive Exploration of Human Development (1960-2020)</p>
+      <p class="subtitle fade-in">Did the world become more equal in health or in wealth?</p>
       <p class="description fade-in-delay">
         Discover 60 years of global transformation through data. Explore how major historical 
-        events shaped development across 250+ countries and 20 indicators—from GDP growth to 
-        climate change, from digital revolutions to demographic shifts.
+        events shaped development across 250+ countries and 20 indicators—and see how poorer 
+        countries quietly caught up in life expectancy even as income gaps remained large.
       </p>
       <div class="stats-preview">
         <div class="stat-item">
@@ -200,13 +200,14 @@
   <section id="visualizations" class="viz-section">
     <h2 class="section-title">Interactive Data Explorations</h2>
     <p class="section-subtitle">Dive deep into the data. Each visualization reveals a unique perspective on 60 years of global transformation.</p>
+    <p class="section-subtitle"><strong>Guiding question:</strong> Have poorer countries caught up with richer ones in health, even if they remain far behind in income?</p>
     
     <div class="viz-grid">
     <!-- Visualization 1: Animated World Choropleth Map -->
     <div class="viz-container featured">
       <div class="viz-header">
         <h3>🌍 Global Development Patterns</h3>
-        <p>Watch how development indicators evolved across the globe over 60 years</p>
+        <p>Compare how unequal the world looks in income vs life expectancy over 60 years&mdash;try switching the indicator in 2020 to see how health has caught up even where wealth has not.</p>
       </div>
       <div class="viz-controls">
         <div class="control-group">
@@ -226,13 +227,16 @@
       </div>
       <div id="world-map"></div>
       <div class="map-legend" id="map-legend"></div>
+      <p class="viz-caption">
+        This map grounds our main question by contrasting where money is concentrated with where people actually live longer lives&mdash;if the world is more equal in health than in wealth, the life expectancy view should look much less polarized than the income view.
+      </p>
     </div>
 
     <!-- Visualization 2: Animated Racing Bar Chart -->
     <div class="viz-container featured">
       <div class="viz-header">
         <h3>🏆 Top 10 Countries Race</h3>
-        <p>Watch countries compete across development metrics through time</p>
+        <p>Watch countries compete across development metrics through time and see how a small group continues to dominate in total wealth even as other countries catch up in health.</p>
       </div>
       <div class="viz-controls">
         <div class="control-group">
@@ -250,6 +254,9 @@
         <button id="race-play-btn" class="play-btn">▶ Start Race</button>
       </div>
       <svg id="racing-bars" viewBox="0 0 900 600"></svg>
+      <p class="viz-caption">
+        The race highlights how a handful of countries consistently dominate the leaderboard in total GDP, reminding us that even as health improves elsewhere, the distribution of global wealth remains highly unequal.
+      </p>
     </div>
 
     <!-- Visualization 3: Interactive Stream Graph -->
@@ -260,13 +267,16 @@
       </div>
       <svg id="stream-graph" viewBox="0 0 1000 500"></svg>
       <div class="stream-legend" id="stream-legend"></div>
+      <p class="viz-caption">
+        This stream graph provides the backdrop for our story: some regions, like East Asia, grow dramatically in economic power, while others lag behind, setting up the contrast between who got rich and who still managed to gain years of life.
+      </p>
     </div>
 
     <!-- Visualization 4: Bubble Chart with Animation -->
     <div class="viz-container">
       <div class="viz-header">
         <h3>💫 Wealth, Health & Population</h3>
-        <p>Three dimensions of development in motion: GDP per capita, life expectancy, and population size</p>
+        <p>See how many countries climb upward in life expectancy over time even when they remain far to the left in income, highlighting convergence in health but not in wealth.</p>
       </div>
       <div class="viz-controls">
         <div class="control-group">
@@ -278,31 +288,56 @@
       <svg id="bubble-chart" viewBox="0 0 900 600"></svg>
       <div class="bubble-legend" id="bubble-legend"></div>
       <div class="tooltip"></div>
+      <p class="viz-caption">
+        By scrubbing through time, you can see countries drift upward on the life expectancy axis even if they stay poor on the income axis&mdash;this is where the convergence in health versus persistent gaps in wealth becomes most visually obvious.
+      </p>
     </div>
 
     <!-- Visualization 5: Radial Area Chart -->
     <div class="viz-container">
       <div class="viz-header">
         <h3>🎯 Development Indicators Radar</h3>
-        <p>Compare countries across multiple development dimensions</p>
+        <p>Compare countries across multiple development dimensions and see how gaps in life expectancy are often smaller than gaps in income.</p>
       </div>
       <div class="viz-controls">
         <div class="control-group country-selector">
           <label>Select Countries:</label>
           <div class="country-chips" id="country-chips"></div>
         </div>
+        <div class="control-group">
+          <label>Year: <span id="radar-year-display">2020</span></label>
+          <input type="range" id="radar-year-slider" min="1960" max="2020" value="2020" step="5">
+        </div>
       </div>
       <svg id="radar-chart" viewBox="0 0 700 700"></svg>
+      <p class="viz-caption">
+        The radar snapshot makes our takeaway concrete: countries with very different economic spikes can still have similarly long life-expectancy spokes, underscoring how far health has caught up compared to income.
+      </p>
     </div>
 
     <!-- Visualization 6: Connected Scatter Plot (Trajectories) -->
     <div class="viz-container">
       <div class="viz-header">
         <h3>🛤️ Development Trajectories</h3>
-        <p>Trace the unique paths countries took from 1960 to 2020</p>
+        <p>Trace the unique paths countries took from 1960 to 2020 and notice how many countries gain years of life before fully catching up in income.</p>
       </div>
       <svg id="trajectory-chart" viewBox="0 0 900 600"></svg>
       <div class="trajectory-legend" id="trajectory-legend"></div>
+      <p class="viz-caption">
+        Each path shows the order in which countries gained wealth and health: many move steeply upward in life expectancy long before they approach rich-country income levels, reinforcing our theme that health can converge even when wealth does not.
+      </p>
+    </div>
+
+    <!-- Visualization 7: India & China Focus -->
+    <div class="viz-container">
+      <div class="viz-header">
+        <h3>🇮🇳🇨🇳 India &amp; China: Half the World’s Story</h3>
+        <p>Focus on India and China&mdash;home to more than a third of humanity&mdash;to see how large, early gains in life expectancy accompany and often precede their dramatic later growth in income.</p>
+      </div>
+      <svg id="india-china-trajectory" viewBox="0 0 900 500"></svg>
+      <p class="viz-caption">
+        For both India and China, the curves first climb sharply upward in life expectancy before bending further to the right in income, suggesting that in these giant countries, broad health improvements laid the groundwork for later surges in wealth.
+      </p>
     </div>
     </div> <!-- Close viz-grid -->
   </section>
@@ -353,6 +388,16 @@
           ensuring the visualizations remain accessible, performant, and tell coherent stories about human 
           development that go beyond just displaying numbers. The integration of geographical, temporal, and 
           multivariate dimensions adds layers of complexity that demand thoughtful design decisions at every step.
+        </p>
+      </div>
+
+      <div class="writeup-block">
+        <h3>Key Takeaway: Health Convergence vs Wealth Inequality</h3>
+        <p>
+          Across 60 years, the world remained deeply unequal in income, but became much more equal in health. Our visualizations show that many low- and middle-income countries dramatically improved life expectancy without fully catching up in GDP per capita.
+        </p>
+        <p>
+          By combining a global choropleth, a racing bar chart, animated bubble and trajectory plots, and a radar snapshot, our explorable lets readers see both the stubborn inequality in income and the quiet, surprising convergence in life expectancy. We hope viewers come away understanding that development is not just about getting richer&mdash;it is also about how quickly health can improve, even when wealth does not.
         </p>
       </div>
     </div>

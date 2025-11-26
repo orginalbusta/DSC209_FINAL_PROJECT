@@ -189,8 +189,8 @@ function initScrollytelling() {
 
 function updateTimelineViz(year) {
   // Access data from global scope (loaded by data-loader.js)
-  if (typeof regionalGDPData === 'undefined') {
-    console.warn('regionalGDPData not loaded');
+  if (typeof regionalGDPData === 'undefined' || typeof healthData === 'undefined') {
+    console.warn('regionalGDPData or healthData not loaded');
     return;
   }
 
@@ -204,58 +204,171 @@ function updateTimelineViz(year) {
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
   
-  const years = Object.keys(regionalGDPData).map(Number);
-  const currentYearIndex = years.indexOf(parseInt(year));
+  const years = Object.keys(regionalGDPData).map(Number).sort((a, b) => a - b);
+  const targetYear = parseInt(year);
+  let currentYearIndex = years.indexOf(targetYear);
+  if (currentYearIndex === -1) {
+    currentYearIndex = years.length - 1;
+  }
   const dataUpToYear = years.slice(0, currentYearIndex + 1);
   
   const regions = regionalGDPData[years[0]].map(d => d.region);
   
-  // Prepare line data
-  const lineData = regions.map(region => ({
-    region: region,
-    values: dataUpToYear.map(y => ({
-      year: y,
-      gdp: regionalGDPData[y].find(d => d.region === region).gdp
-    })),
-    color: regionalGDPData[years[0]].find(d => d.region === region).color
-  }));
+  // Prepare line data for regional GDP per capita (wealth)
+  const lineData = regions.map(region => {
+    const color = regionalGDPData[years[0]].find(d => d.region === region).color;
+    const values = dataUpToYear.map(y => {
+      const reg = regionalGDPData[y].find(d => d.region === region);
+      if (!reg || !reg.population) return null;
+      // gdp in trillions, population in millions → per-capita in USD
+      const gdpPerCapita = (reg.gdp / reg.population) * 1e6;
+      return { year: y, gdpPerCapita };
+    }).filter(d => d !== null);
+    return { region, values, color };
+  });
+  
+  // Population-weighted life expectancy over time (health)
+  // Split into "Western" (North America + Europe) vs "Rest of World"
+  const westernRegions = new Set(['North America', 'Europe']);
+
+  const lifeSeriesWest = dataUpToYear.map(y => {
+    const dataY = healthData[y] || [];
+    const west = dataY.filter(d => westernRegions.has(d.region));
+    const totalPop = d3.sum(west, d => d.population);
+    if (!totalPop) return null;
+    const lifeWeighted = d3.sum(west, d => d.lifeExpectancy * d.population) / totalPop;
+    return { year: y, life: lifeWeighted };
+  }).filter(d => d !== null);
+
+  const lifeSeriesRest = dataUpToYear.map(y => {
+    const dataY = healthData[y] || [];
+    const rest = dataY.filter(d => !westernRegions.has(d.region));
+    const totalPop = d3.sum(rest, d => d.population);
+    if (!totalPop) return null;
+    const lifeWeighted = d3.sum(rest, d => d.lifeExpectancy * d.population) / totalPop;
+    return { year: y, life: lifeWeighted };
+  }).filter(d => d !== null);
   
   // Scales
   const xScale = d3.scaleLinear()
     .domain([years[0], years[years.length - 1]])
     .range([0, width]);
   
-  const yScale = d3.scaleLinear()
-    .domain([0, d3.max(lineData, d => d3.max(d.values, v => v.gdp)) * 1.1])
+  const maxGdpPerCapita = d3.max(lineData, d => d3.max(d.values, v => v.gdpPerCapita)) || 1;
+  const yScaleWealth = d3.scaleLinear()
+    .domain([0, maxGdpPerCapita * 1.1])
     .range([height, 0]);
   
-  // Line generator
-  const line = d3.line()
+  const allLifeValues = [
+    ...lifeSeriesWest.map(d => d.life),
+    ...lifeSeriesRest.map(d => d.life)
+  ];
+  const lifeMin = allLifeValues.length ? d3.min(allLifeValues) : 50;
+  const lifeMax = allLifeValues.length ? d3.max(allLifeValues) : 85;
+  const yScaleHealth = d3.scaleLinear()
+    .domain([Math.max(40, lifeMin - 2), Math.min(90, lifeMax + 2)])
+    .range([height, 0])
+    .clamp(true);
+  
+  // Line generators
+  const wealthLine = d3.line()
     .x(d => xScale(d.year))
-    .y(d => yScale(d.gdp))
+    .y(d => yScaleWealth(d.gdpPerCapita))
+    .curve(d3.curveMonotoneX);
+
+  const healthLine = d3.line()
+    .x(d => xScale(d.year))
+    .y(d => yScaleHealth(d.life))
     .curve(d3.curveMonotoneX);
   
-  // Draw lines
-  lineData.forEach(d => {
+  // Draw regional GDP per capita lines + offset labels with leader lines
+  const usedLabelYs = [];
+  const minLabelY = 10;
+  const maxLabelY = height - 10;
+
+  lineData.forEach((d, i) => {
+    if (!d.values.length) return;
+
     g.append('path')
       .datum(d.values)
       .attr('fill', 'none')
       .attr('stroke', d.color)
       .attr('stroke-width', 3)
       .attr('opacity', 0.8)
-      .attr('d', line);
-      
-    // Add region label at end
+      .attr('d', wealthLine);
+
+    // Label with slight vertical offset and a leader line to reduce crowding
     const lastPoint = d.values[d.values.length - 1];
+    const xEnd = xScale(lastPoint.year);
+    const yEnd = yScaleWealth(lastPoint.gdpPerCapita);
+
+    let offsetY = (i - (regions.length - 1) / 2) * 14;
+    const labelX = xEnd + 35;
+    let labelY = yEnd + offsetY;
+
+    // Keep labels within the plot area (avoid overlapping axes titles)
+    labelY = Math.max(minLabelY, Math.min(maxLabelY, labelY));
+
+    // Simple collision-avoidance: nudge label if too close to an existing one
+    const minGap = 12;
+    let adjusted = true;
+    while (adjusted) {
+      adjusted = false;
+      for (const y of usedLabelYs) {
+        if (Math.abs(labelY - y) < minGap) {
+          labelY += minGap;
+          if (labelY > maxLabelY) labelY = y - minGap;
+          adjusted = true;
+          break;
+        }
+      }
+    }
+    usedLabelYs.push(labelY);
+
+    // Leader line from end of series to label
+    g.append('line')
+      .attr('x1', xEnd)
+      .attr('y1', yEnd)
+      .attr('x2', labelX - 6)
+      .attr('y2', labelY)
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-linecap', 'round')
+      .attr('opacity', 0.9);
+
+    // Label text
     g.append('text')
-      .attr('x', xScale(lastPoint.year) + 5)
-      .attr('y', yScale(lastPoint.gdp))
+      .attr('x', labelX)
+      .attr('y', labelY)
       .attr('dy', '0.35em')
       .attr('fill', d.color)
-      .style('font-size', '12px')
+      .style('font-size', '11px')
       .style('font-weight', '600')
       .text(d.region);
   });
+
+  // Draw life expectancy lines: Western vs Rest
+  if (lifeSeriesWest.length) {
+    g.append('path')
+      .datum(lifeSeriesWest)
+      .attr('fill', 'none')
+      .attr('stroke', '#ff6b6b')
+      .attr('stroke-width', 3)
+      .attr('stroke-dasharray', '6,4')
+      .attr('opacity', 0.9)
+      .attr('d', healthLine);
+  }
+
+  if (lifeSeriesRest.length) {
+    g.append('path')
+      .datum(lifeSeriesRest)
+      .attr('fill', 'none')
+      .attr('stroke', '#ffd166')
+      .attr('stroke-width', 3)
+      .attr('stroke-dasharray', '4,3')
+      .attr('opacity', 0.9)
+      .attr('d', healthLine);
+  }
   
   // Axes
   const xAxisG = g.append('g')
@@ -264,12 +377,18 @@ function updateTimelineViz(year) {
   xAxisG.selectAll('text').style('fill', '#9aa0a6');
   xAxisG.selectAll('line, path').style('stroke', '#2d3548');
   
-  const yAxisG = g.append('g')
-    .call(d3.axisLeft(yScale).ticks(5));
-  yAxisG.selectAll('text').style('fill', '#9aa0a6');
-  yAxisG.selectAll('line, path').style('stroke', '#2d3548');
+  const yAxisLeft = g.append('g')
+    .call(d3.axisLeft(yScaleWealth).ticks(5));
+  yAxisLeft.selectAll('text').style('fill', '#9aa0a6');
+  yAxisLeft.selectAll('line, path').style('stroke', '#2d3548');
+
+  const yAxisRight = g.append('g')
+    .attr('transform', `translate(${width}, 0)`)
+    .call(d3.axisRight(yScaleHealth).ticks(5));
+  yAxisRight.selectAll('text').style('fill', '#ff6b6b');
+  yAxisRight.selectAll('line, path').style('stroke', '#2d3548');
     
-  // Y-axis label
+  // Y-axis labels
   g.append('text')
     .attr('transform', 'rotate(-90)')
     .attr('y', -50)
@@ -277,7 +396,58 @@ function updateTimelineViz(year) {
     .attr('text-anchor', 'middle')
     .style('fill', '#9aa0a6')
     .style('font-size', '14px')
-    .text('GDP (Trillions USD)');
+    .text('Regional GDP per Capita (USD)');
+
+  g.append('text')
+    .attr('transform', 'rotate(90)')
+    .attr('y', -width - 50)
+    .attr('x', height / 2)
+    .attr('text-anchor', 'middle')
+    .style('fill', '#ff6b6b')
+    .style('font-size', '14px')
+    .text('Life Expectancy (years)');
+
+  // Legend for life lines (inside plot, upper-left)
+  const legend = g.append('g')
+    .attr('transform', 'translate(10, 10)');
+
+  let legendOffset = 0;
+
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('y1', legendOffset)
+    .attr('x2', 18)
+    .attr('y2', legendOffset)
+    .attr('stroke', '#ff6b6b')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '6,4');
+
+  legend.append('text')
+    .attr('x', 24)
+    .attr('y', legendOffset)
+    .attr('dy', '0.35em')
+    .style('fill', '#ff6b6b')
+    .style('font-size', '11px')
+    .text('Life Expectancy – West');
+
+  legendOffset += 18;
+
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('y1', legendOffset)
+    .attr('x2', 18)
+    .attr('y2', legendOffset)
+    .attr('stroke', '#ffd166')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '4,3');
+
+  legend.append('text')
+    .attr('x', 24)
+    .attr('y', legendOffset)
+    .attr('dy', '0.35em')
+    .style('fill', '#ffd166')
+    .style('font-size', '11px')
+    .text('Life Expectancy – Rest');
 }
 
 // ===================================
@@ -380,14 +550,176 @@ function createStreamGraph() {
 // Racing Bar Chart
 // ===================================
 let raceInterval = null;
+let raceYears = [];
+let raceSvg = null;
+let raceGroup = null;
+let raceBarHeight = 0;
+let raceWidth = 0;
+const raceMargin = { top: 80, right: 100, bottom: 40, left: 200 };
+let raceMetricSelect = null;
+let raceYearSlider = null;
+let raceYearDisplay = null;
+let racePlayBtn = null;
+
+function getRaceMetricConfig(key) {
+  switch (key) {
+    case 'population':
+      return {
+        label: 'Population',
+        accessor: d => d.population,
+        format: v => (v / 1e6).toFixed(1) + 'M'
+      };
+    case 'life_expectancy':
+      return {
+        label: 'Life Expectancy',
+        accessor: d => d.lifeExpectancy,
+        format: v => v.toFixed(1) + ' yrs'
+      };
+    case 'gdp':
+    default:
+      return {
+        label: 'Total GDP',
+        accessor: d => d.gdpPerCapita * d.population,
+        format: v => '$' + (v / 1e12).toFixed(2) + 'T'
+      };
+  }
+}
+
+function renderRaceForYear(year, metricKey = 'gdp') {
+  if (!raceSvg || !raceGroup || !raceYears.length) return;
+
+  const metricConfig = getRaceMetricConfig(metricKey);
+  const dataForYear = healthData[year];
+  if (!dataForYear || !dataForYear.length) {
+    console.warn('No data for year in race chart:', year);
+    return;
+  }
+
+  const data = dataForYear
+    .slice()
+    .sort((a, b) => metricConfig.accessor(b) - metricConfig.accessor(a))
+    .slice(0, 10);
+
+  const xScale = d3.scaleLinear()
+    .domain([0, d3.max(data, d => metricConfig.accessor(d)) || 1])
+    .range([0, raceWidth]);
+
+  raceSvg.selectAll('.year-label').remove();
+  raceSvg.append('text')
+    .attr('class', 'year-label')
+    .attr('x', raceWidth / 2 + raceMargin.left)
+    .attr('y', 40)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '3rem')
+    .style('font-weight', '800')
+    .style('fill', '#667eea')
+    .text(year);
+
+  const bars = raceGroup.selectAll('.race-bar')
+    .data(data, d => d.country);
+
+  bars.enter()
+    .append('rect')
+    .attr('class', 'race-bar')
+    .attr('x', 0)
+    .attr('y', (d, i) => i * (raceBarHeight + 10))
+    .attr('height', raceBarHeight)
+    .attr('fill', '#667eea')
+    .attr('rx', 5)
+    .merge(bars)
+    .transition()
+    .duration(800)
+    .attr('y', (d, i) => i * (raceBarHeight + 10))
+    .attr('width', d => xScale(metricConfig.accessor(d)));
+
+  bars.exit().remove();
+
+  const labels = raceGroup.selectAll('.race-label')
+    .data(data, d => d.country);
+
+  labels.enter()
+    .append('text')
+    .attr('class', 'race-label')
+    .attr('x', -10)
+    .attr('y', (d, i) => i * (raceBarHeight + 10) + raceBarHeight / 2)
+    .attr('dy', '0.35em')
+    .attr('text-anchor', 'end')
+    .style('font-weight', '600')
+    .style('font-size', '14px')
+    .merge(labels)
+    .transition()
+    .duration(800)
+    .attr('y', (d, i) => i * (raceBarHeight + 10) + raceBarHeight / 2)
+    .text(d => d.country);
+
+  labels.exit().remove();
+
+  const values = raceGroup.selectAll('.race-value')
+    .data(data, d => d.country);
+
+  values.enter()
+    .append('text')
+    .attr('class', 'race-value')
+    .attr('x', d => xScale(metricConfig.accessor(d)) + 5)
+    .attr('y', (d, i) => i * (raceBarHeight + 10) + raceBarHeight / 2)
+    .attr('dy', '0.35em')
+    .style('font-size', '12px')
+    .style('fill', '#667eea')
+    .merge(values)
+    .transition()
+    .duration(800)
+    .attr('x', d => xScale(metricConfig.accessor(d)) + 5)
+    .attr('y', (d, i) => i * (raceBarHeight + 10) + raceBarHeight / 2)
+    .text(d => metricConfig.format(metricConfig.accessor(d)));
+
+  values.exit().remove();
+}
+
+function startRace(metricKey = 'gdp') {
+  if (typeof healthData === 'undefined' || !raceYears.length) {
+    console.warn('healthData not loaded or raceYears empty');
+    return;
+  }
+
+  // Clear any existing animation to avoid multiple intervals
+  if (raceInterval) {
+    clearInterval(raceInterval);
+    raceInterval = null;
+  }
+
+  const years = raceYears;
+  let startYear = raceYearSlider ? parseInt(raceYearSlider.value) : years[0];
+  if (!years.includes(startYear)) {
+    startYear = years[0];
+  }
+  let yearIndex = years.indexOf(startYear);
+
+  function step() {
+    if (yearIndex >= years.length) {
+      clearInterval(raceInterval);
+      raceInterval = null;
+      if (racePlayBtn) racePlayBtn.textContent = '▶ Start Race';
+      return;
+    }
+
+    const year = years[yearIndex];
+    if (raceYearDisplay) raceYearDisplay.textContent = year;
+    if (raceYearSlider) raceYearSlider.value = year;
+    renderRaceForYear(year, metricKey);
+    yearIndex++;
+  }
+
+  step();
+  raceInterval = setInterval(step, 1500);
+}
 
 function createRacingBars() {
-  const playBtn = document.getElementById('race-play-btn');
-  const metricSelect = document.getElementById('race-metric');
-  const yearSlider = document.getElementById('race-year-slider');
-  const yearDisplay = document.getElementById('race-year-display');
+  racePlayBtn = document.getElementById('race-play-btn');
+  raceMetricSelect = document.getElementById('race-metric');
+  raceYearSlider = document.getElementById('race-year-slider');
+  raceYearDisplay = document.getElementById('race-year-display');
 
-  if (!playBtn) {
+  if (!racePlayBtn) {
     console.warn('Race play button not found');
     return;
   }
@@ -396,185 +728,79 @@ function createRacingBars() {
     return;
   }
 
-  const svg = d3.select('#racing-bars');
-  svg.selectAll('*').remove();
+  raceSvg = d3.select('#racing-bars');
+  raceSvg.selectAll('*').remove();
 
-  const margin = { top: 80, right: 100, bottom: 40, left: 200 };
-  const width = 900 - margin.left - margin.right;
-  const height = 600 - margin.top - margin.bottom;
+  const innerWidth = 900 - raceMargin.left - raceMargin.right;
+  const innerHeight = 600 - raceMargin.top - raceMargin.bottom;
+  raceWidth = innerWidth;
+  raceBarHeight = innerHeight / 10 - 10;
 
-  const g = svg.append('g')
-    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+  raceGroup = raceSvg.append('g')
+    .attr('transform', `translate(${raceMargin.left}, ${raceMargin.top})`);
 
-  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
-  const barHeight = height / 10 - 10;
+  raceYears = Object.keys(healthData).map(Number).sort((a, b) => a - b);
 
-  function getMetricConfig(key) {
-    switch (key) {
-      case 'population':
-        return {
-          label: 'Population',
-          accessor: d => d.population,
-          format: v => (v / 1e6).toFixed(1) + 'M'
-        };
-      case 'life_expectancy':
-        return {
-          label: 'Life Expectancy',
-          accessor: d => d.lifeExpectancy,
-          format: v => v.toFixed(1) + ' yrs'
-        };
-      case 'gdp':
-      default:
-        return {
-          label: 'Total GDP',
-          accessor: d => d.gdpPerCapita * d.population,
-          format: v => '$' + (v / 1e12).toFixed(2) + 'T'
-        };
-    }
-  }
+  // Initialize slider and default view
+  if (raceYearSlider && raceYears.length) {
+    raceYearSlider.min = raceYears[0];
+    raceYearSlider.max = raceYears[raceYears.length - 1];
 
-  function renderRaceForYear(year, metricKey) {
-    const metricConfig = getMetricConfig(metricKey);
-    const dataForYear = healthData[year];
-    if (!dataForYear || !dataForYear.length) {
-      console.warn('No data for year in race chart:', year);
-      return;
+    if (!raceYearSlider.value || !raceYears.includes(parseInt(raceYearSlider.value))) {
+      raceYearSlider.value = raceYears[0];
     }
 
-    const data = dataForYear
-      .slice()
-      .sort((a, b) => metricConfig.accessor(b) - metricConfig.accessor(a))
-      .slice(0, 10);
+    const initialYear = parseInt(raceYearSlider.value);
+    if (raceYearDisplay) raceYearDisplay.textContent = initialYear;
 
-    const xScale = d3.scaleLinear()
-      .domain([0, d3.max(data, d => metricConfig.accessor(d)) || 1])
-      .range([0, width]);
+    const initialMetricKey = raceMetricSelect ? raceMetricSelect.value : 'gdp';
+    renderRaceForYear(initialYear, initialMetricKey);
 
-    svg.selectAll('.year-label').remove();
-    svg.append('text')
-      .attr('class', 'year-label')
-      .attr('x', width / 2 + margin.left)
-      .attr('y', 40)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '3rem')
-      .style('font-weight', '800')
-      .style('fill', '#667eea')
-      .text(year);
-
-    const bars = g.selectAll('.race-bar')
-      .data(data, d => d.country);
-
-    bars.enter()
-      .append('rect')
-      .attr('class', 'race-bar')
-      .attr('x', 0)
-      .attr('y', (d, i) => i * (barHeight + 10))
-      .attr('height', barHeight)
-      .attr('fill', '#667eea')
-      .attr('rx', 5)
-      .merge(bars)
-      .transition()
-      .duration(800)
-      .attr('y', (d, i) => i * (barHeight + 10))
-      .attr('width', d => xScale(metricConfig.accessor(d)));
-
-    bars.exit().remove();
-
-    const labels = g.selectAll('.race-label')
-      .data(data, d => d.country);
-
-    labels.enter()
-      .append('text')
-      .attr('class', 'race-label')
-      .attr('x', -10)
-      .attr('y', (d, i) => i * (barHeight + 10) + barHeight / 2)
-      .attr('dy', '0.35em')
-      .attr('text-anchor', 'end')
-      .style('font-weight', '600')
-      .style('font-size', '14px')
-      .merge(labels)
-      .transition()
-      .duration(800)
-      .attr('y', (d, i) => i * (barHeight + 10) + barHeight / 2)
-      .text(d => d.country);
-
-    labels.exit().remove();
-
-    const values = g.selectAll('.race-value')
-      .data(data, d => d.country);
-
-    values.enter()
-      .append('text')
-      .attr('class', 'race-value')
-      .attr('x', d => xScale(metricConfig.accessor(d)) + 5)
-      .attr('y', (d, i) => i * (barHeight + 10) + barHeight / 2)
-      .attr('dy', '0.35em')
-      .style('font-size', '12px')
-      .style('fill', '#667eea')
-      .merge(values)
-      .transition()
-      .duration(800)
-      .attr('x', d => xScale(metricConfig.accessor(d)) + 5)
-      .attr('y', (d, i) => i * (barHeight + 10) + barHeight / 2)
-      .text(d => metricConfig.format(metricConfig.accessor(d)));
-
-    values.exit().remove();
-  }
-
-  if (yearSlider && years.length) {
-    yearSlider.min = years[0];
-    yearSlider.max = years[years.length - 1];
-    yearSlider.value = years[0];
-    if (yearDisplay) yearDisplay.textContent = years[0];
-
-    yearSlider.addEventListener('input', () => {
-      const yr = parseInt(yearSlider.value);
+    raceYearSlider.addEventListener('input', () => {
+      const yr = parseInt(raceYearSlider.value);
       if (!healthData[yr]) return;
-      if (yearDisplay) yearDisplay.textContent = yr;
-      const metricKey = metricSelect ? metricSelect.value : 'gdp';
-      if (!raceInterval) {
-        renderRaceForYear(yr, metricKey);
+
+      // Scrubbing cancels any running animation for predictability
+      if (raceInterval) {
+        clearInterval(raceInterval);
+        raceInterval = null;
+        if (racePlayBtn) racePlayBtn.textContent = '▶ Start Race';
       }
+
+      if (raceYearDisplay) raceYearDisplay.textContent = yr;
+      const metricKey = raceMetricSelect ? raceMetricSelect.value : 'gdp';
+      renderRaceForYear(yr, metricKey);
     });
   }
 
-  playBtn.addEventListener('click', () => {
+  // Changing metric updates the current year view and stops the race
+  if (raceMetricSelect) {
+    raceMetricSelect.addEventListener('change', () => {
+      if (!raceYears.length) return;
+      const yr = raceYearSlider ? parseInt(raceYearSlider.value) : raceYears[0];
+
+      if (raceInterval) {
+        clearInterval(raceInterval);
+        raceInterval = null;
+        if (racePlayBtn) racePlayBtn.textContent = '▶ Start Race';
+      }
+
+      const metricKey = raceMetricSelect.value || 'gdp';
+      renderRaceForYear(yr, metricKey);
+    });
+  }
+
+  racePlayBtn.addEventListener('click', () => {
     if (raceInterval) {
       clearInterval(raceInterval);
       raceInterval = null;
-      playBtn.textContent = '▶ Start Race';
+      racePlayBtn.textContent = '▶ Start Race';
     } else {
-      const metric = metricSelect ? metricSelect.value : 'gdp';
-      startRace(metric);
-      playBtn.textContent = '⏸ Pause';
+      const metricKey = raceMetricSelect ? raceMetricSelect.value : 'gdp';
+      startRace(metricKey);
+      racePlayBtn.textContent = '⏸ Pause';
     }
   });
-}
-
-function startRace(metricKey = 'gdp') {
-  if (typeof healthData === 'undefined') {
-    console.warn('healthData not loaded');
-    return;
-  }
-
-  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
-  let yearIndex = 0;
-
-  function step() {
-    if (yearIndex >= years.length) {
-      clearInterval(raceInterval);
-      raceInterval = null;
-      const btn = document.getElementById('race-play-btn');
-      if (btn) btn.textContent = '▶ Start Race';
-      return;
-    }
-    const year = years[yearIndex];
-    renderRaceForYear(year, metricKey);
-    yearIndex++;
-  }
-
-  step();
-  raceInterval = setInterval(step, 1500);
 }
 
 // ===================================
@@ -593,7 +819,7 @@ function createBubbleChart() {
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
   
-  const years = Object.keys(healthData).map(Number);
+  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
   let currentYearIndex = years.length - 1;
   
   // Scales
@@ -685,13 +911,28 @@ function createBubbleChart() {
   // Slider control
   const slider = document.getElementById('bubble-year-slider');
   const yearDisplay = document.getElementById('bubble-year-display');
-  
-  slider.addEventListener('input', (e) => {
-    const yearIndex = Math.round((e.target.value - 1960) / 10);
-    currentYearIndex = Math.max(0, Math.min(yearIndex, years.length - 1));
-    yearDisplay.textContent = years[currentYearIndex];
-    updateBubbles(currentYearIndex);
-  });
+
+  if (slider && years.length) {
+    // Align slider range with available data years
+    slider.min = years[0];
+    slider.max = years[years.length - 1];
+    if (!slider.value || slider.value < slider.min || slider.value > slider.max) {
+      slider.value = years[currentYearIndex];
+    }
+    if (yearDisplay) yearDisplay.textContent = years[currentYearIndex];
+
+    slider.addEventListener('input', (e) => {
+      const targetYear = parseInt(e.target.value);
+      // Snap to the closest available data year
+      const closestYear = years.reduce((prev, curr) =>
+        Math.abs(curr - targetYear) < Math.abs(prev - targetYear) ? curr : prev
+      );
+      currentYearIndex = years.indexOf(closestYear);
+      slider.value = closestYear;
+      if (yearDisplay) yearDisplay.textContent = closestYear;
+      updateBubbles(currentYearIndex);
+    });
+  }
   
   // Play button
   const playBtn = document.getElementById('bubble-play-btn');
@@ -1033,156 +1274,194 @@ function createWorldMap() {
 // ===================================
 function createRadarChart() {
   if (typeof healthData === 'undefined') return;
-  
+
   const svg = d3.select('#radar-chart');
   const size = 700;
   const margin = 100;
   const radius = (size - margin * 2) / 2;
   const centerX = size / 2;
   const centerY = size / 2;
-  
-  svg.selectAll('*').remove();
-  
-  const g = svg.append('g')
-    .attr('transform', `translate(${centerX}, ${centerY})`);
-  
-  // Use 2020 if available, otherwise fall back to latest year with data
-  const allYears = Object.keys(healthData).map(Number).sort((a, b) => a - b);
-  const targetYear = allYears.includes(2020) ? 2020 : allYears[allYears.length - 1];
-  const dataYear = healthData[targetYear] || [];
 
-  const selectedCountries = ['United States', 'China', 'India', 'Germany', 'Brazil'];
-  const countryData = selectedCountries
-    .map(name => dataYear.find(d => d.country === name))
-    .filter(d => d);
-  
-  // Indicators with normalization ranges
-  const indicators = [
-    { name: 'GDP per Capita', key: 'gdpPerCapita', min: 0, max: 70000 },
-    // Focus life expectancy range on 55–85 years for better contrast
-    { name: 'Life Expectancy (55–85)', key: 'lifeExpectancy', min: 55, max: 85 },
-    // Population represented in millions, max ~1.5B → 1500M
-    { name: 'Population (M)', key: 'population', min: 0, max: 1500, scale: 1000000 }
-  ];
-  const numIndicators = indicators.length;
-  
-  // Color scale for countries
-  const colorScale = d3.scaleOrdinal()
-    .domain(selectedCountries)
-    .range(['#4e79a7', '#e15759', '#76b7b2', '#f28e2c', '#59a14f']);
-  
-  // Create radar grid
-  const levels = 5;
-  for (let i = 1; i <= levels; i++) {
-    const levelRadius = (radius / levels) * i;
-    g.append('circle')
-      .attr('r', levelRadius)
-      .attr('fill', 'none')
-      .attr('stroke', '#2d3548')
-      .attr('stroke-width', 1.5);
-    
-    // Add level labels
-    if (i === levels) {
-      g.append('text')
-        .attr('x', 5)
-        .attr('y', -levelRadius)
-        .style('fill', '#9aa0a6')
-        .style('font-size', '11px')
-        .text('100%');
+  const allYears = Object.keys(healthData).map(Number).sort((a, b) => a - b);
+  if (!allYears.length) return;
+
+  const selectedCountries = ['United States', 'Germany', 'Brazil', 'Bangladesh', 'Thailand'];
+
+  const radarYearSlider = document.getElementById('radar-year-slider');
+  const radarYearDisplay = document.getElementById('radar-year-display');
+
+  // Initialize slider with available years
+  if (radarYearSlider) {
+    radarYearSlider.min = allYears[0];
+    radarYearSlider.max = allYears[allYears.length - 1];
+    if (!radarYearSlider.value ||
+        radarYearSlider.value < radarYearSlider.min ||
+        radarYearSlider.value > radarYearSlider.max) {
+      radarYearSlider.value = allYears.includes(2020) ? 2020 : allYears[allYears.length - 1];
     }
   }
-  
-  // Create axes
-  indicators.forEach((indicator, i) => {
-    const angle = (Math.PI * 2 * i) / numIndicators - Math.PI / 2;
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-    
-    g.append('line')
-      .attr('x1', 0)
-      .attr('y1', 0)
-      .attr('x2', x)
-      .attr('y2', y)
-      .attr('stroke', '#2d3548')
-      .attr('stroke-width', 2);
-    
-    g.append('text')
-      .attr('x', Math.cos(angle) * (radius + 30))
-      .attr('y', Math.sin(angle) * (radius + 30))
-      .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .style('fill', '#e8eaed')
-      .style('font-size', '13px')
-      .style('font-weight', '600')
-      .text(indicator.name);
-  });
-  
-  // Create radar path generator
-  const radarLine = d3.lineRadial()
-    .angle((d, i) => (i * 2 * Math.PI) / numIndicators)
-    .radius(d => d * radius)
-    .curve(d3.curveLinearClosed);
-  
-  // Draw radar areas for each country
-  countryData.forEach(country => {
-    const values = indicators.map(ind => {
-      const value = country[ind.key];
-      const scaledValue = ind.scale ? value / ind.scale : value;
-      const min = ind.min ?? 0;
-      const max = ind.max;
-      const normalized = (scaledValue - min) / (max - min || 1);
-      return Math.max(0, Math.min(normalized, 1));
-    });
-    
-    // Add closing point
-    values.push(values[0]);
-    
-    // Draw filled area
-    g.append('path')
-      .datum(values)
-      .attr('d', radarLine)
-      .attr('fill', colorScale(country.country))
-      .attr('fill-opacity', 0.2)
-      .attr('stroke', colorScale(country.country))
-      .attr('stroke-width', 2.5);
-    
-    // Draw points
-    values.slice(0, -1).forEach((value, i) => {
-      const angle = (i * 2 * Math.PI) / numIndicators - Math.PI / 2;
-      const x = Math.cos(angle) * value * radius;
-      const y = Math.sin(angle) * value * radius;
-      
+
+  function renderRadarForYear(year) {
+    const targetYear = allYears.reduce((prev, curr) =>
+      Math.abs(curr - year) < Math.abs(prev - year) ? curr : prev
+    );
+
+    const dataYear = healthData[targetYear] || [];
+
+    svg.selectAll('*').remove();
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${centerX}, ${centerY})`);
+
+    const countryData = selectedCountries
+      .map(name => dataYear.find(d => d.country === name))
+      .filter(d => d);
+
+    // Indicators with normalization ranges
+    const indicators = [
+      { name: 'GDP per Capita', key: 'gdpPerCapita', min: 0, max: 70000 },
+      // Focus life expectancy range on 55–85 years for better contrast
+      { name: 'Life Expectancy (55–85)', key: 'lifeExpectancy', min: 55, max: 85 },
+      // Population represented in millions, max ~1.5B → 1500M
+      { name: 'Population (M)', key: 'population', min: 0, max: 1500, scale: 1000000 }
+    ];
+    const numIndicators = indicators.length;
+
+    // Color scale for countries
+    const colorScale = d3.scaleOrdinal()
+      .domain(selectedCountries)
+      .range(['#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f']);
+
+    // Create radar grid
+    const levels = 5;
+    for (let i = 1; i <= levels; i++) {
+      const levelRadius = (radius / levels) * i;
       g.append('circle')
-        .attr('cx', x)
-        .attr('cy', y)
-        .attr('r', 4)
-        .attr('fill', colorScale(country.country))
-        .attr('stroke', '#fff')
+        .attr('r', levelRadius)
+        .attr('fill', 'none')
+        .attr('stroke', '#2d3548')
+        .attr('stroke-width', 1.5);
+
+      // Add level labels
+      if (i === levels) {
+        g.append('text')
+          .attr('x', 5)
+          .attr('y', -levelRadius)
+          .style('fill', '#9aa0a6')
+          .style('font-size', '11px')
+          .text('100%');
+      }
+    }
+
+    // Create axes
+    indicators.forEach((indicator, i) => {
+      const angle = (Math.PI * 2 * i) / numIndicators - Math.PI / 2;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+
+      g.append('line')
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', x)
+        .attr('y2', y)
+        .attr('stroke', '#2d3548')
         .attr('stroke-width', 2);
+
+      g.append('text')
+        .attr('x', Math.cos(angle) * (radius + 30))
+        .attr('y', Math.sin(angle) * (radius + 30))
+        .attr('text-anchor', 'middle')
+        .attr('dy', '0.35em')
+        .style('fill', '#e8eaed')
+        .style('font-size', '13px')
+        .style('font-weight', '600')
+        .text(indicator.name);
     });
-  });
-  
-  // Add legend below the chart
-  const legend = svg.append('g')
-    .attr('transform', `translate(${size / 2 - 200}, ${size - 40})`);
-  
-  selectedCountries.forEach((country, i) => {
-    const legendItem = legend.append('g')
-      .attr('transform', `translate(${i * 90}, 0)`);
-    
-    legendItem.append('rect')
-      .attr('width', 20)
-      .attr('height', 12)
-      .attr('fill', colorScale(country))
-      .attr('rx', 2);
-    
-    legendItem.append('text')
-      .attr('x', 25)
-      .attr('y', 10)
-      .style('fill', '#e8eaed')
-      .style('font-size', '12px')
-      .text(country);
-  });
+
+    // Create radar path generator
+    const radarLine = d3.lineRadial()
+      .angle((d, i) => (i * 2 * Math.PI) / numIndicators)
+      .radius(d => d * radius)
+      .curve(d3.curveLinearClosed);
+
+    // Draw radar areas for each country
+    countryData.forEach(country => {
+      const values = indicators.map(ind => {
+        const value = country[ind.key];
+        const scaledValue = ind.scale ? value / ind.scale : value;
+        const min = ind.min ?? 0;
+        const max = ind.max;
+        const normalized = (scaledValue - min) / (max - min || 1);
+        return Math.max(0, Math.min(normalized, 1));
+      });
+
+      // Add closing point
+      values.push(values[0]);
+
+      // Draw filled area
+      g.append('path')
+        .datum(values)
+        .attr('d', radarLine)
+        .attr('fill', colorScale(country.country))
+        .attr('fill-opacity', 0.2)
+        .attr('stroke', colorScale(country.country))
+        .attr('stroke-width', 2.5);
+
+      // Draw points
+      values.slice(0, -1).forEach((value, i) => {
+        const angle = (i * 2 * Math.PI) / numIndicators - Math.PI / 2;
+        const x = Math.cos(angle) * value * radius;
+        const y = Math.sin(angle) * value * radius;
+
+        g.append('circle')
+          .attr('cx', x)
+          .attr('cy', y)
+          .attr('r', 4)
+          .attr('fill', colorScale(country.country))
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 2);
+      });
+    });
+
+    // Add legend below the chart
+    const legend = svg.append('g')
+      .attr('transform', `translate(${size / 2 - 200}, ${size - 40})`);
+
+    selectedCountries.forEach((country, i) => {
+      const legendItem = legend.append('g')
+        .attr('transform', `translate(${i * 90}, 0)`);
+
+      legendItem.append('rect')
+        .attr('width', 20)
+        .attr('height', 12)
+        .attr('fill', colorScale(country))
+        .attr('rx', 2);
+
+      legendItem.append('text')
+        .attr('x', 25)
+        .attr('y', 10)
+        .style('fill', '#e8eaed')
+        .style('font-size', '12px')
+        .text(country);
+    });
+
+    if (radarYearDisplay) {
+      radarYearDisplay.textContent = targetYear;
+    }
+  }
+
+  const initialYear = radarYearSlider
+    ? parseInt(radarYearSlider.value)
+    : (allYears.includes(2020) ? 2020 : allYears[allYears.length - 1]);
+
+  renderRadarForYear(initialYear);
+
+  if (radarYearSlider) {
+    radarYearSlider.addEventListener('input', (e) => {
+      const year = parseInt(e.target.value);
+      renderRadarForYear(year);
+    });
+  }
 }
 
 // ===================================
@@ -1201,10 +1480,10 @@ function createTrajectoryChart() {
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
   
-  const years = Object.keys(healthData).map(Number);
+  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
   
   // Get trajectory data for selected countries
-  const selectedCountries = ['United States', 'China', 'India', 'Germany', 'Brazil', 'Nigeria'];
+  const selectedCountries = ['United States', 'Germany', 'Brazil', 'Nigeria', 'United Kingdom', 'Bangladesh'];
   const trajectories = selectedCountries.map(country => ({
     country: country,
     values: years.map(year => {
@@ -1302,6 +1581,121 @@ function createTrajectoryChart() {
 }
 
 // ===================================
+// India & China Focused Trajectory
+// ===================================
+function createIndiaChinaTrajectory() {
+  if (typeof healthData === 'undefined') return;
+
+  const svg = d3.select('#india-china-trajectory');
+  if (svg.empty()) return;
+
+  svg.selectAll('*').remove();
+
+  const margin = { top: 60, right: 120, bottom: 60, left: 80 };
+  const width = 900 - margin.left - margin.right;
+  const height = 500 - margin.top - margin.bottom;
+
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+  const years = Object.keys(healthData).map(Number).sort((a, b) => a - b);
+  const focusCountries = ['India', 'China'];
+
+  const trajectories = focusCountries.map(country => ({
+    country,
+    values: years.map(year => {
+      const d = (healthData[year] || []).find(c => c.country === country);
+      return d ? { year, gdp: d.gdpPerCapita, life: d.lifeExpectancy } : null;
+    }).filter(d => d !== null)
+  }));
+
+  // Scales (reuse same ranges as main trajectory chart for consistency)
+  const xScale = d3.scaleLog()
+    .domain([80, 80000])
+    .range([0, width]);
+
+  const yScale = d3.scaleLinear()
+    .domain([35, 85])
+    .range([height, 0]);
+
+  const colorScale = d3.scaleOrdinal()
+    .domain(focusCountries)
+    .range(['#e15759', '#76b7b2']); // China (red-ish), India (teal)
+
+  const line = d3.line()
+    .x(d => xScale(d.gdp))
+    .y(d => yScale(d.life))
+    .curve(d3.curveMonotoneX);
+
+  trajectories.forEach(traj => {
+    if (!traj.values.length) return;
+
+    g.append('path')
+      .datum(traj.values)
+      .attr('fill', 'none')
+      .attr('stroke', colorScale(traj.country))
+      .attr('stroke-width', 3)
+      .attr('opacity', 0.9)
+      .attr('d', line);
+
+    const start = traj.values[0];
+    const end = traj.values[traj.values.length - 1];
+
+    g.append('circle')
+      .attr('cx', xScale(start.gdp))
+      .attr('cy', yScale(start.life))
+      .attr('r', 5)
+      .attr('fill', colorScale(traj.country));
+
+    g.append('circle')
+      .attr('cx', xScale(end.gdp))
+      .attr('cy', yScale(end.life))
+      .attr('r', 7)
+      .attr('fill', colorScale(traj.country))
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2);
+
+    // Label near the end point
+    g.append('text')
+      .attr('x', xScale(end.gdp) + 8)
+      .attr('y', yScale(end.life))
+      .attr('dy', '0.35em')
+      .style('fill', colorScale(traj.country))
+      .style('font-size', '13px')
+      .style('font-weight', '600')
+      .text(traj.country);
+  });
+
+  // Axes
+  const xAxis = g.append('g')
+    .attr('transform', `translate(0, ${height})`)
+    .call(d3.axisBottom(xScale).ticks(5, '$,.0f'));
+  xAxis.selectAll('text').style('fill', '#9aa0a6');
+  xAxis.selectAll('line, path').style('stroke', '#2d3548');
+
+  const yAxis = g.append('g')
+    .call(d3.axisLeft(yScale));
+  yAxis.selectAll('text').style('fill', '#9aa0a6');
+  yAxis.selectAll('line, path').style('stroke', '#2d3548');
+
+  // Axis labels
+  g.append('text')
+    .attr('x', width / 2)
+    .attr('y', height + 45)
+    .attr('text-anchor', 'middle')
+    .style('fill', '#9aa0a6')
+    .text('GDP per Capita ($, log scale)');
+
+  g.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('y', -60)
+    .attr('x', -height / 2)
+    .attr('text-anchor', 'middle')
+    .style('fill', '#9aa0a6')
+    .text('Life Expectancy (years)');
+}
+
+// ===================================
 // Initialize Everything
 // ===================================
 function init() {
@@ -1326,6 +1720,7 @@ function init() {
       createBubbleChart();
       createRadarChart();
       createTrajectoryChart();
+      createIndiaChinaTrajectory();
       
       console.log('✅ All visualizations loaded with full World Bank data!');
     }, 50);
