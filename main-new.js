@@ -197,7 +197,7 @@ function updateTimelineViz(year) {
   const svg = d3.select('#timeline-viz');
   svg.selectAll('*').remove(); // Clear previous
   
-  const margin = { top: 50, right: 100, bottom: 50, left: 70 };
+  const margin = { top: 50, right: 100, bottom: 50, left: 100 };
   const width = 900 - margin.left - margin.right;
   const height = 600 - margin.top - margin.bottom;
   
@@ -210,7 +210,12 @@ function updateTimelineViz(year) {
   if (currentYearIndex === -1) {
     currentYearIndex = years.length - 1;
   }
-  const dataUpToYear = years.slice(0, currentYearIndex + 1);
+  // Ensure at least 2 data points for line drawing (1960-1970 for first step)
+  let endIndex = currentYearIndex + 1;
+  if (endIndex < 2) {
+    endIndex = Math.min(2, years.length);
+  }
+  const dataUpToYear = years.slice(0, endIndex);
   
   const regions = regionalGDPData[years[0]].map(d => d.region);
   
@@ -304,7 +309,7 @@ function updateTimelineViz(year) {
       .attr('y', legendOffsetY)
       .attr('dy', '0.35em')
       .style('fill', '#e8eaed')
-      .style('font-size', '11px')
+      .style('font-size', '14px')
       .text(region);
 
     legendOffsetY += 14;
@@ -327,7 +332,7 @@ function updateTimelineViz(year) {
     .attr('y', legendOffsetY)
     .attr('dy', '0.35em')
     .style('fill', '#ff6b6b')
-    .style('font-size', '11px')
+    .style('font-size', '14px')
     .text('Life Expectancy – West');
 
   legendOffsetY += 14;
@@ -346,7 +351,7 @@ function updateTimelineViz(year) {
     .attr('y', legendOffsetY)
     .attr('dy', '0.35em')
     .style('fill', '#ffd166')
-    .style('font-size', '11px')
+    .style('font-size', '14px')
     .text('Life Expectancy – Rest');
   
   // Draw regional GDP per capita lines (labels handled via legend)
@@ -389,37 +394,37 @@ function updateTimelineViz(year) {
   const xAxisG = g.append('g')
     .attr('transform', `translate(0, ${height})`)
     .call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
-  xAxisG.selectAll('text').style('fill', '#9aa0a6');
+  xAxisG.selectAll('text').style('fill', '#9aa0a6').style('font-size', '13px');
   xAxisG.selectAll('line, path').style('stroke', '#2d3548');
   
   const yAxisLeft = g.append('g')
     .call(d3.axisLeft(yScaleWealth).ticks(5));
-  yAxisLeft.selectAll('text').style('fill', '#9aa0a6');
+  yAxisLeft.selectAll('text').style('fill', '#9aa0a6').style('font-size', '13px');
   yAxisLeft.selectAll('line, path').style('stroke', '#2d3548');
 
   const yAxisRight = g.append('g')
     .attr('transform', `translate(${width}, 0)`)
     .call(d3.axisRight(yScaleHealth).ticks(5));
-  yAxisRight.selectAll('text').style('fill', '#ff6b6b');
+  yAxisRight.selectAll('text').style('fill', '#ff6b6b').style('font-size', '13px');
   yAxisRight.selectAll('line, path').style('stroke', '#2d3548');
     
   // Y-axis labels
   g.append('text')
     .attr('transform', 'rotate(-90)')
-    .attr('y', -50)
+    .attr('y', -60)
     .attr('x', -height / 2)
     .attr('text-anchor', 'middle')
     .style('fill', '#9aa0a6')
-    .style('font-size', '14px')
+    .style('font-size', '18px')
     .text('Regional GDP per Capita (USD)');
 
   g.append('text')
     .attr('transform', 'rotate(90)')
-    .attr('y', -width - 60)
+    .attr('y', -width - 70)
     .attr('x', height / 2)
     .attr('text-anchor', 'middle')
     .style('fill', '#ff6b6b')
-    .style('font-size', '14px')
+    .style('font-size', '18px')
     .text('Life Expectancy (years)');
 
   // Legend is handled directly in the SVG via line colors and axis labels
